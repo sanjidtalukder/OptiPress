@@ -87,6 +87,22 @@ export interface OptimizationResult {
   expiresAt: string;
 }
 
+export type ImageOptimizationMode = 'smart' | 'quality' | 'maximum';
+
+export interface ImageOptimizationResult {
+  fileId: string;
+  originalSize: number;
+  optimizedSize: number;
+  reductionBytes: number;
+  reductionPercentage: number;
+  originalFormat: string;
+  outputFormat: string;
+  width: number;
+  height: number;
+  mode: ImageOptimizationMode;
+  processingTimeMs: number;
+}
+
 export type JobStatus =
   | 'idle'
   | 'queued'

@@ -42,6 +42,15 @@ export class TemporaryStorageService {
   }
 
   /**
+   * Resolves physical file path safely within the session storage directory.
+   */
+  getFilePath(sessionId: string, storedName: string): string {
+    const safeSessionId = this.sanitizeId(sessionId);
+    const safeStoredName = path.basename(storedName);
+    return path.join(this.baseDir, safeSessionId, safeStoredName);
+  }
+
+  /**
    * Moves a temp upload to its session-isolated destination.
    */
   async saveTemporaryFile(sourcePath: string, sessionId: string, storedName: string): Promise<string> {

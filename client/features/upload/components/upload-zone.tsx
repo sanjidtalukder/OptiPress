@@ -6,6 +6,7 @@ import { siteConfig } from '@/config/site';
 import { formatBytes } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ImageOptimizerCard } from '@/features/optimizer/components/image-optimizer-card';
 import { useFileUpload } from '../hooks/use-file-upload';
 
 interface UploadZoneProps {
@@ -159,46 +160,48 @@ export function UploadZone({ sessionId, disabled = false }: UploadZoneProps) {
           <div className="space-y-2">
             {files.map((file) => {
               const isPdf = file.extension === 'pdf';
+              const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(file.extension.toLowerCase());
               return (
-                <div
-                  key={file.id}
-                  className="flex items-center justify-between p-4 rounded-xl border border-border bg-card shadow-sm hover:border-accent/40 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent border border-accent/20">
-                      {isPdf ? <FileText className="h-5 w-5" /> : <ImageIcon className="h-5 w-5" />}
-                    </div>
-
-                    <div className="min-w-0 space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-foreground truncate max-w-[240px] sm:max-w-xs">
-                          {file.originalName}
-                        </span>
-                        <Badge variant="outline" className="uppercase text-[10px] font-mono">
-                          {file.extension}
-                        </Badge>
-                        <Badge variant="accent" className="capitalize text-[10px] gap-1">
-                          <FileCheck className="h-3 w-3" />
-                          {file.status}
-                        </Badge>
+                <div key={file.id} className="space-y-2">
+                  <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-card shadow-sm hover:border-accent/40 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent border border-accent/20">
+                        {isPdf ? <FileText className="h-5 w-5" /> : <ImageIcon className="h-5 w-5" />}
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        Size: <strong className="text-foreground">{formatBytes(file.fileSize)}</strong>
-                      </p>
+
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-foreground truncate max-w-[240px] sm:max-w-xs">
+                            {file.originalName}
+                          </span>
+                          <Badge variant="outline" className="uppercase text-[10px] font-mono">
+                            {file.extension}
+                          </Badge>
+                          <Badge variant="accent" className="capitalize text-[10px] gap-1">
+                            <FileCheck className="h-3 w-3" />
+                            {file.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          Size: <strong className="text-foreground">{formatBytes(file.fileSize)}</strong>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pl-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile(file.id)}
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0 rounded-lg"
+                        aria-label="Remove temporary file"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 pl-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFile(file.id)}
-                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0 rounded-lg"
-                      aria-label="Remove temporary file"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {isImage && <ImageOptimizerCard file={file} />}
                 </div>
               );
             })}

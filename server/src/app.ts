@@ -7,6 +7,7 @@ import { errorHandler } from './middleware/error.js';
 import { healthRouter } from './routes/health.router.js';
 import { sessionRouter } from './routes/session.router.js';
 import { fileRouter } from './routes/file.router.js';
+import { imageRouter } from './routes/image.router.js';
 
 export const createApp = () => {
   const app = express();
@@ -30,6 +31,9 @@ export const createApp = () => {
 
   // API Temporary File Routes
   app.use('/api/files', fileRouter);
+
+  // API Image Optimization Routes
+  app.use('/api/images', imageRouter);
 
   // Error handling middleware
   app.use(errorHandler);
