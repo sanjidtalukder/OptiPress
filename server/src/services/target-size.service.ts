@@ -106,9 +106,9 @@ export class TargetSizeService {
       const meta: CandidateMeta = {
         quality: q,
         size: candStats.size,
-        psnr: qualityEval.psnr,
+        psnr: qualityEval.metrics.psnr || 0,
         score: qualityEval.score,
-        isAcceptable: qualityEval.isAcceptable,
+        isAcceptable: qualityEval.passed,
       };
 
       return { meta, tempFile: candPath };

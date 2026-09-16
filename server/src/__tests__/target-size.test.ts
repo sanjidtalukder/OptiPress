@@ -64,9 +64,9 @@ test('ImageQualityEvaluator Service', async (t) => {
 
   await t.test('Identical images return perfect PSNR 100', async () => {
     const result = await imageQualityEvaluator.evaluateQuality(imgPath, imgPath);
-    assert.equal(result.psnr, 100);
+    assert.equal(result.metrics.psnr, 100);
     assert.equal(result.score, 100);
-    assert.equal(result.isAcceptable, true);
+    assert.equal(result.passed, true);
   });
 
   await cleanupTestDir();

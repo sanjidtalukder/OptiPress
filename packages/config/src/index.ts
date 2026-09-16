@@ -66,4 +66,31 @@ export const PDF_OPTIMIZATION_CONFIG = {
   },
 };
 
+export const QUALITY_PROFILES = {
+  quality_first: {
+    minSsim: 0.96,
+    minPsnr: 35,
+    minScore: 85,
+    description: 'High detail preservation mode',
+  },
+  balanced: {
+    minSsim: 0.92,
+    minPsnr: 30,
+    minScore: 75,
+    description: 'Balanced perceptual quality mode',
+  },
+  maximum_compression: {
+    minSsim: 0.85,
+    minPsnr: 25,
+    minScore: 60,
+    description: 'Max compression mode with acceptable clarity',
+  },
+};
+
+export const QUALITY_SAMPLING_CONFIG = {
+  MAX_COMPARISON_DIMENSION: 1920, // max width/height for SSIM/PSNR comparison
+  MAX_PDF_SAMPLE_PAGES: 5, // max representative pages sampled for multi-page PDFs
+};
+
+
 

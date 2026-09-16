@@ -193,4 +193,28 @@ export interface PdfOptimizationResult {
   processingTimeMs: number;
 }
 
+export type QualityStatus = 'PASS' | 'FAIL' | 'UNABLE_TO_EVALUATE';
+export type QualityProfile = 'quality_first' | 'balanced' | 'maximum_compression';
+
+export interface QualityMetrics {
+  ssim?: number;
+  psnr?: number;
+  score: number;
+  dimensionsMatch: boolean;
+  decodable: boolean;
+  pageCountMatch?: boolean;
+  textExtractable?: boolean;
+}
+
+export interface QualityEvaluationResult {
+  status: QualityStatus;
+  passed: boolean;
+  score: number;
+  metrics: QualityMetrics;
+  issues: string[];
+  confidence: 'high' | 'medium' | 'low';
+  evaluatedAt: string;
+}
+
+
 
