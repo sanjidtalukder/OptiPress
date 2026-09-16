@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Theme Tokens */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --primary: 221 83% 53%; /* Technical indigo/azure blue */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 94%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 160 84% 39%; /* Emerald precision accent */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 210 40% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 221 83% 53%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Dark Theme Tokens - Refined Charcoal Slate, not pitch black */
+    --background: 224 25% 9%;
+    --foreground: 210 40% 96%;
+
+    --card: 224 22% 12%;
+    --card-foreground: 210 40% 96%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 224 25% 9%;
+
+    --secondary: 223 18% 18%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 223 18% 16%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 160 70% 44%;
+    --accent-foreground: 224 25% 9%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 210 40% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+
+    --border: 223 16% 22%;
+    --input: 223 16% 22%;
+    --ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Reduced Motion Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

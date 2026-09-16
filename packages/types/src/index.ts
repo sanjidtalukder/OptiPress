@@ -1,0 +1,87 @@
+/**
+ * Shared domain types across OptiPress monorepo
+ */
+
+export type SupportedFileType =
+  | 'pdf'
+  | 'jpg'
+  | 'jpeg'
+  | 'png'
+  | 'webp'
+  | 'avif';
+
+export interface User {
+  id: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Session {
+  id: string;
+  userId?: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface FileMetadata {
+  id: string;
+  name: string;
+  size: number;
+  type: SupportedFileType;
+  mimeType: string;
+  lastModified: number;
+}
+
+export interface TargetSizeConfig {
+  value: number; // in KB
+  unit: 'KB' | 'MB';
+  preset?: 99 | 200 | 500 | 1000 | 'custom';
+}
+
+export interface OptimizationOptions {
+  targetSize?: TargetSizeConfig;
+  qualityPreset?: 'lossless' | 'balanced' | 'max_compression';
+  outputFormat?: SupportedFileType;
+  stripMetadata?: boolean;
+  preservePdfLinks?: boolean;
+}
+
+export interface OptimizationResult {
+  jobId: string;
+  originalSize: number;
+  optimizedSize: number;
+  compressionRatio: number;
+  savingsPercentage: number;
+  processingTimeMs: number;
+  downloadUrl: string;
+  expiresAt: string;
+}
+
+export type JobStatus =
+  | 'idle'
+  | 'queued'
+  | 'processing'
+  | 'completed'
+  | 'failed';
+
+export interface ProcessingJob {
+  id: string;
+  file: FileMetadata;
+  options: OptimizationOptions;
+  status: JobStatus;
+  progress: number;
+  result?: OptimizationResult;
+  error?: string;
+  createdAt: string;
+}
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+}
