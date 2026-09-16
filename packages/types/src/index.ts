@@ -17,6 +17,21 @@ export interface User {
   updatedAt: string;
 }
 
+export interface UserProfile {
+  id: string;
+  plan: 'free' | 'pro' | 'enterprise';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AppSessionData {
+  id: string;
+  userId: string;
+  createdAt: string;
+  lastActivityAt: string;
+  expiresAt: string;
+}
+
 export interface Session {
   id: string;
   userId?: string;

@@ -17,7 +17,7 @@
     "build:client": "npm run build --workspace=client",
     "build": "npm run build:packages && npm run build:server && npm run build:client",
     "lint": "npm run lint --workspace=client && npm run lint --workspace=server",
-    "typecheck": "tsc --noEmit --composite false"
+    "typecheck": "npm run build:packages && npm run build:server"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

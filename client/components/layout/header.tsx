@@ -2,15 +2,18 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Layers, Menu, X, Shield, Sparkles } from 'lucide-react';
+import { Layers, Menu, X, Shield, Sparkles, User } from 'lucide-react';
 import { siteConfig } from '@/config/site';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { AuthModal } from '@/auth/components/auth-modal';
+import { LogoutButton } from '@/auth/components/logout-button';
+import { useAuth } from '@/auth/hooks/use-auth';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   return (
     <>
@@ -59,14 +62,41 @@ export function Header() {
 
             <ThemeToggle />
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAuthModalOpen(true)}
-              className="text-xs font-semibold"
-            >
-              Sign In
-            </Button>
+            {!isLoading && (
+              <>
+                {isAuthenticated && user ? (
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/app"
+                      className="text-xs font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/60 border border-border"
+                    >
+                      <User className="h-3.5 w-3.5 text-accent" />
+                      <span className="truncate max-w-[140px]">{user.email}</span>
+                    </Link>
+                    <LogoutButton variant="outline" size="sm" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setAuthModalOpen(true)}
+                      className="text-xs font-semibold"
+                    >
+                      Sign In
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      asChild
+                      className="text-xs font-semibold shadow-sm"
+                    >
+                      <Link href="/signup">Sign Up</Link>
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -104,18 +134,33 @@ export function Header() {
             </nav>
 
             <div className="pt-3 border-t border-border flex flex-col gap-2">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setAuthModalOpen(true);
-                }}
-                className="w-full flex items-center justify-center gap-2 text-xs"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Sign In / Account
-              </Button>
+              {isAuthenticated && user ? (
+                <>
+                  <Link
+                    href="/app"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold rounded-lg bg-muted text-foreground"
+                  >
+                    <span>Workspace ({user.email})</span>
+                  </Link>
+                  <LogoutButton variant="outline" className="w-full" />
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setAuthModalOpen(true);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 text-xs"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Sign In / Sign Up
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}
