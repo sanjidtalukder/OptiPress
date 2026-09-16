@@ -130,3 +130,34 @@ export interface ApiResponse<T = unknown> {
     details?: unknown;
   };
 }
+
+export type TargetSizeResultState =
+  | 'success'
+  | 'target_unreachable'
+  | 'already_below_target'
+  | 'failed';
+
+export interface TargetSizeOptimizationRequest {
+  targetSize: number;
+  unit: 'KB' | 'MB';
+  forceTarget?: boolean;
+}
+
+export interface TargetSizeOptimizationResult {
+  fileId: string;
+  status: TargetSizeResultState;
+  originalSize: number;
+  targetSizeBytes: number;
+  outputSize: number;
+  reductionBytes: number;
+  reductionPercentage: number;
+  qualityProtected: boolean;
+  targetReached: boolean;
+  forced: boolean;
+  bestSafeSize?: number;
+  qualityScore?: number;
+  iterationsCount?: number;
+  message?: string;
+  processingTimeMs: number;
+}
+

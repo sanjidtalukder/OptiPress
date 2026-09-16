@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
-import { optimizeImage } from '../controllers/image.controller.js';
+import { optimizeImage, optimizeTargetSize } from '../controllers/image.controller.js';
 
 export const imageRouter = Router();
 
@@ -8,3 +8,5 @@ export const imageRouter = Router();
 imageRouter.use(authMiddleware as any);
 
 imageRouter.post('/:fileId/optimize', optimizeImage as any);
+imageRouter.post('/:fileId/target-size', optimizeTargetSize as any);
+
