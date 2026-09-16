@@ -10,6 +10,8 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().optional(),
   SUPABASE_SECRET_KEY: z.string().optional(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
+  MAX_UPLOAD_SIZE_MB: z.string().transform(Number).default('100'),
+  TEMPORARY_STORAGE_PATH: z.string().default('./storage/temporary'),
 });
 
 const _env = envSchema.safeParse(process.env);

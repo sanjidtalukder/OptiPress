@@ -48,6 +48,20 @@ export interface FileMetadata {
   lastModified: number;
 }
 
+export interface SessionFileMetadata {
+  id: string;
+  sessionId: string;
+  userId: string;
+  originalName: string;
+  storedName: string;
+  mimeType: string;
+  extension: string;
+  fileSize: number;
+  status: 'uploaded' | 'processing' | 'completed' | 'failed' | 'deleted';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TargetSizeConfig {
   value: number; // in KB
   unit: 'KB' | 'MB';

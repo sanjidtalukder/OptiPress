@@ -6,6 +6,7 @@ import { requestLogger } from './middleware/logger.js';
 import { errorHandler } from './middleware/error.js';
 import { healthRouter } from './routes/health.router.js';
 import { sessionRouter } from './routes/session.router.js';
+import { fileRouter } from './routes/file.router.js';
 
 export const createApp = () => {
   const app = express();
@@ -26,6 +27,9 @@ export const createApp = () => {
 
   // API Authentication & Session Routes
   app.use('/api', sessionRouter);
+
+  // API Temporary File Routes
+  app.use('/api/files', fileRouter);
 
   // Error handling middleware
   app.use(errorHandler);

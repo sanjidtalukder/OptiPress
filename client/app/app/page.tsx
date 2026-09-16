@@ -80,7 +80,7 @@ export default async function AppWorkspacePage() {
               </div>
             </div>
 
-            <UploadZone />
+            <UploadZone sessionId={appSessionId} />
           </div>
         </div>
 
