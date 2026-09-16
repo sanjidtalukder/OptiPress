@@ -7,6 +7,7 @@ import { formatBytes } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ImageOptimizerCard } from '@/features/optimizer/components/image-optimizer-card';
+import { PdfOptimizerCard } from '@/features/optimizer/components/pdf-optimizer-card';
 import { useFileUpload } from '../hooks/use-file-upload';
 
 interface UploadZoneProps {
@@ -202,6 +203,7 @@ export function UploadZone({ sessionId, disabled = false }: UploadZoneProps) {
                   </div>
 
                   {isImage && <ImageOptimizerCard file={file} />}
+                  {isPdf && <PdfOptimizerCard file={file} />}
                 </div>
               );
             })}

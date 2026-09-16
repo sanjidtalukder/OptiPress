@@ -56,3 +56,14 @@ export function formatBytesBinary(bytes: number): string {
   return `${formatted} ${units[i]}`;
 }
 
+export const PDF_OPTIMIZATION_CONFIG = {
+  MAX_FILE_SIZE_BYTES: 100 * 1024 * 1024, // 100 MB max
+  MAX_PAGE_COUNT: 1000, // 1000 pages max
+  DEFAULT_JPEG_QUALITY: {
+    quality: 90,
+    smart: 80,
+    maximum: 65,
+  },
+};
+
+

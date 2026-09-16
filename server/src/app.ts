@@ -8,6 +8,7 @@ import { healthRouter } from './routes/health.router.js';
 import { sessionRouter } from './routes/session.router.js';
 import { fileRouter } from './routes/file.router.js';
 import { imageRouter } from './routes/image.router.js';
+import { pdfRouter } from './routes/pdf.router.js';
 
 export const createApp = () => {
   const app = express();
@@ -34,6 +35,9 @@ export const createApp = () => {
 
   // API Image Optimization Routes
   app.use('/api/images', imageRouter);
+
+  // API PDF Optimization Routes
+  app.use('/api/pdfs', pdfRouter);
 
   // Error handling middleware
   app.use(errorHandler);

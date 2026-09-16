@@ -161,3 +161,36 @@ export interface TargetSizeOptimizationResult {
   processingTimeMs: number;
 }
 
+export type PdfOptimizationMode = 'smart' | 'quality' | 'maximum';
+export type PdfType = 'text' | 'image' | 'mixed';
+
+export interface PdfAnalysisResult {
+  pageCount: number;
+  pdfVersion: string;
+  isEncrypted: boolean;
+  isSigned: boolean;
+  hasForms: boolean;
+  hasAnnotations: boolean;
+  hasBookmarks: boolean;
+  embeddedImageCount: number;
+  pdfType: PdfType;
+}
+
+export interface PdfOptimizationResult {
+  fileId: string;
+  status: 'success' | 'already_optimized' | 'unsupported_feature' | 'failed';
+  originalSize: number;
+  optimizedSize: number;
+  reductionBytes: number;
+  reductionPercentage: number;
+  pageCount: number;
+  pdfType: PdfType;
+  mode: PdfOptimizationMode;
+  isEncrypted: boolean;
+  isSigned: boolean;
+  warnings: string[];
+  message?: string;
+  processingTimeMs: number;
+}
+
+
