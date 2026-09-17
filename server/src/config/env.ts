@@ -12,6 +12,10 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
   MAX_UPLOAD_SIZE_MB: z.string().transform(Number).default('100'),
   TEMPORARY_STORAGE_PATH: z.string().default('./storage/temporary'),
+  SESSION_TTL_MINUTES: z.string().transform(Number).default('1440'),
+  TEMP_FILE_TTL_MINUTES: z.string().transform(Number).default('60'),
+  CLEANUP_INTERVAL_MINUTES: z.string().transform(Number).default('15'),
+  CLEANUP_BATCH_SIZE: z.string().transform(Number).default('100'),
 });
 
 const _env = envSchema.safeParse(process.env);

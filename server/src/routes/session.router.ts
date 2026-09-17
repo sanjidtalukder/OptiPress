@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
-import { getMe, getSession, createSession, deleteSession } from '../controllers/session.controller.js';
+import { getMe, getSession, createSession, deleteSession, clearWorkspaceSession } from '../controllers/session.controller.js';
 
 export const sessionRouter = Router();
 
@@ -12,3 +12,6 @@ sessionRouter.get('/auth/me', getMe as any);
 sessionRouter.get('/session', getSession as any);
 sessionRouter.post('/session', createSession as any);
 sessionRouter.delete('/session', deleteSession as any);
+sessionRouter.post('/sessions/clear', clearWorkspaceSession as any);
+sessionRouter.post('/sessions/clear-beacon', clearWorkspaceSession as any);
+

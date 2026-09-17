@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import path from 'path';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
@@ -6,6 +7,8 @@ import { temporaryStorageService } from '../services/storage.service.js';
 import { pdfOptimizer } from '../services/pdf-optimizer.service.js';
 import { pdfValidator } from '../services/pdf-validator.service.js';
 import { validateFileBytes } from '../utils/file-validation.js';
+import { historyService } from '../services/history.service.js';
+import { sessionFileRepository } from '../services/file-repository.service.js';
 import { PdfOptimizationMode } from '@optipress/types';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co';
@@ -32,37 +35,17 @@ export const optimizePdf = async (req: AuthenticatedRequest, res: Response) => {
 
   const mode = parseResult.data.mode as PdfOptimizationMode;
 
-  let sessionId = '';
-  let storedName = '';
-  let extension = '';
-  let isAuthorized = false;
-
-  try {
-    const { data } = await supabase
-      .from('session_files')
-      .select('id, session_id, user_id, stored_name, extension, status')
-      .eq('id', fileId)
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (data && data.user_id === req.user.id) {
-      sessionId = data.session_id;
-      storedName = data.stored_name;
-      extension = data.extension.toLowerCase();
-      isAuthorized = true;
-    }
-  } catch {
-    // Fallback if DB fetch fails
-  }
-
-  if (!isAuthorized) {
+  const fileRecord = await sessionFileRepository.getFileRecord(fileId, req.user.id);
+  if (!fileRecord) {
     return res.status(404).json({
       success: false,
       error: { code: 'FILE_NOT_FOUND', message: 'Requested PDF file not found or unauthorized.' },
     });
   }
 
-  if (extension !== 'pdf') {
+  const { sessionId, storedName, originalName, extension } = fileRecord;
+
+  if (extension.toLowerCase() !== 'pdf') {
     return res.status(400).json({
       success: false,
       error: { code: 'NOT_A_PDF', message: `File format .${extension} cannot be processed by the PDF optimization engine.` },
@@ -70,7 +53,10 @@ export const optimizePdf = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   const inputPath = temporaryStorageService.getFilePath(sessionId, storedName);
-  const outputPath = temporaryStorageService.getFilePath(sessionId, `${fileId}-optimized.pdf`);
+  const outputFile = temporaryStorageService.generateStorageKey(sessionId, 'pdf');
+  const outputPath = temporaryStorageService.getFilePath(sessionId, outputFile.storedName);
+  const parsedName = path.parse(originalName || storedName);
+  const outputFileName = `${parsedName.name || fileId}-optimized.pdf`;
 
   // Magic-byte check
   const headerCheck = await validateFileBytes(inputPath, storedName, 'application/pdf');
@@ -99,21 +85,58 @@ export const optimizePdf = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     try {
+      await sessionFileRepository.updateFileStatus(
+        fileId,
+        result.status === 'failed' ? 'failed' : 'completed',
+        result.originalSize
+      );
+
+      await sessionFileRepository.saveFileRecord({
+        id: outputFile.fileId,
+        sessionId,
+        userId: req.user.id,
+        originalName: outputFileName,
+        storedName: outputFile.storedName,
+        mimeType: 'application/pdf',
+        extension: 'pdf',
+        fileSize: result.optimizedSize,
+        storageKey: outputFile.storageKey,
+        status: result.status === 'failed' ? 'failed' : 'completed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
       await supabase
-        .from('session_files')
-        .update({
-          file_size: result.optimizedSize,
-          status: result.status === 'failed' ? 'failed' : 'completed',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', fileId);
+        .from('app_sessions')
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq('id', sessionId);
     } catch {
       // Ignore DB status update errors
     }
 
+    // Record temporary workspace history
+    await historyService.recordHistory({
+      sessionId,
+      userId: req.user.id,
+      fileId: outputFile.fileId,
+      originalName: originalName || storedName,
+      extension: 'pdf',
+      originalSize: result.originalSize,
+      outputSize: result.optimizedSize,
+      operation: 'PDF Optimization',
+      mode,
+      status: result.status === 'failed' ? 'failed' : 'completed',
+      reductionPercentage: result.reductionPercentage,
+      resultStorageKey: outputFile.storedName,
+    });
+
     return res.status(200).json({
       success: true,
-      data: result,
+      data: {
+        ...result,
+        outputFileId: outputFile.fileId,
+        outputFileName,
+      },
     });
   } catch (err) {
     return res.status(500).json({

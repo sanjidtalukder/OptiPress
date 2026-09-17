@@ -178,6 +178,8 @@ export interface PdfAnalysisResult {
 
 export interface PdfOptimizationResult {
   fileId: string;
+  outputFileId?: string;
+  outputFileName?: string;
   status: 'success' | 'already_optimized' | 'unsupported_feature' | 'failed';
   originalSize: number;
   optimizedSize: number;
@@ -214,6 +216,39 @@ export interface QualityEvaluationResult {
   issues: string[];
   confidence: 'high' | 'medium' | 'low';
   evaluatedAt: string;
+}
+
+export interface SessionHistoryItem {
+  id: string;
+  sessionId: string;
+  userId: string;
+  fileId?: string;
+  originalName: string;
+  extension: string;
+  originalSize: number;
+  outputSize: number;
+  operation: string;
+  mode: string;
+  status: 'completed' | 'failed';
+  reductionPercentage: number;
+  resultStorageKey?: string;
+  createdAt: string;
+}
+
+export interface CleanupConfig {
+  sessionTtlMinutes: number;
+  tempFileTtlMinutes: number;
+  cleanupIntervalMinutes: number;
+  cleanupBatchSize: number;
+}
+
+export interface CleanupStats {
+  sessionsCleaned: number;
+  filesDeleted: number;
+  historyRecordsDeleted: number;
+  orphanDirsDeleted: number;
+  durationMs: number;
+  errorsCount: number;
 }
 
 

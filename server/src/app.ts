@@ -9,6 +9,7 @@ import { sessionRouter } from './routes/session.router.js';
 import { fileRouter } from './routes/file.router.js';
 import { imageRouter } from './routes/image.router.js';
 import { pdfRouter } from './routes/pdf.router.js';
+import { historyRouter } from './routes/history.router.js';
 
 export const createApp = () => {
   const app = express();
@@ -32,6 +33,9 @@ export const createApp = () => {
 
   // API Temporary File Routes
   app.use('/api/files', fileRouter);
+
+  // API Temporary History Routes
+  app.use('/api/history', historyRouter);
 
   // API Image Optimization Routes
   app.use('/api/images', imageRouter);

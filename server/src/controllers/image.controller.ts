@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { temporaryStorageService } from '../services/storage.service.js';
 import { imageOptimizationService } from '../services/image.service.js';
+import { historyService } from '../services/history.service.js';
+import { sessionFileRepository } from '../services/file-repository.service.js';
 import { ImageOptimizationMode } from '@optipress/types';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co';
@@ -32,38 +34,17 @@ export const optimizeImage = async (req: AuthenticatedRequest, res: Response) =>
 
   const mode = parseResult.data.mode as ImageOptimizationMode;
 
-  let sessionId = '';
-  let storedName = '';
-  let extension = '';
-  let isAuthorized = false;
-
-  // Attempt retrieving metadata from Supabase DB `session_files`
-  try {
-    const { data } = await supabase
-      .from('session_files')
-      .select('id, session_id, user_id, stored_name, extension, status')
-      .eq('id', fileId)
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (data && data.user_id === req.user.id) {
-      sessionId = data.session_id;
-      storedName = data.stored_name;
-      extension = data.extension.toLowerCase();
-      isAuthorized = true;
-    }
-  } catch {
-    // Fallback to memory
-  }
-
-  if (!isAuthorized) {
+  const fileRecord = await sessionFileRepository.getFileRecord(fileId, req.user.id);
+  if (!fileRecord) {
     return res.status(404).json({
       success: false,
       error: { code: 'FILE_NOT_FOUND', message: 'Requested image file not found or unauthorized.' },
     });
   }
 
-  if (!IMAGE_EXTENSIONS.has(extension)) {
+  const { sessionId, storedName, originalName, extension } = fileRecord;
+
+  if (!IMAGE_EXTENSIONS.has(extension.toLowerCase())) {
     return res.status(400).json({
       success: false,
       error: { code: 'NOT_AN_IMAGE', message: `File format .${extension} cannot be processed by the image optimization engine.` },
@@ -78,19 +59,36 @@ export const optimizeImage = async (req: AuthenticatedRequest, res: Response) =>
       fileId,
       inputPath,
       outputPath,
-      extension,
+      extension: extension.toLowerCase(),
       mode,
     });
 
-    // Optionally update status in database
     try {
+      await sessionFileRepository.updateFileStatus(fileId, 'completed', result.optimizedSize);
+
       await supabase
-        .from('session_files')
-        .update({ status: 'completed', updated_at: new Date().toISOString() })
-        .eq('id', fileId);
+        .from('app_sessions')
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq('id', sessionId);
     } catch {
       // Ignore DB status update errors
     }
+
+    // Record temporary workspace history
+    await historyService.recordHistory({
+      sessionId,
+      userId: req.user.id,
+      fileId,
+      originalName: originalName || storedName,
+      extension: extension.toLowerCase(),
+      originalSize: result.originalSize,
+      outputSize: result.optimizedSize,
+      operation: 'Image Optimization',
+      mode,
+      status: 'completed',
+      reductionPercentage: result.reductionPercentage,
+      resultStorageKey: `${fileId}-optimized.${extension}`,
+    });
 
     return res.status(200).json({
       success: true,
@@ -133,37 +131,17 @@ export const optimizeTargetSize = async (req: AuthenticatedRequest, res: Respons
 
   const { targetSize, unit, forceTarget } = parseResult.data;
 
-  let sessionId = '';
-  let storedName = '';
-  let extension = '';
-  let isAuthorized = false;
-
-  try {
-    const { data } = await supabase
-      .from('session_files')
-      .select('id, session_id, user_id, stored_name, extension, status')
-      .eq('id', fileId)
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (data && data.user_id === req.user.id) {
-      sessionId = data.session_id;
-      storedName = data.stored_name;
-      extension = data.extension.toLowerCase();
-      isAuthorized = true;
-    }
-  } catch {
-    // Fallback to memory
-  }
-
-  if (!isAuthorized) {
+  const fileRecord = await sessionFileRepository.getFileRecord(fileId, req.user.id);
+  if (!fileRecord) {
     return res.status(404).json({
       success: false,
       error: { code: 'FILE_NOT_FOUND', message: 'Requested image file not found or unauthorized.' },
     });
   }
 
-  if (!IMAGE_EXTENSIONS.has(extension)) {
+  const { sessionId, storedName, originalName, extension } = fileRecord;
+
+  if (!IMAGE_EXTENSIONS.has(extension.toLowerCase())) {
     return res.status(400).json({
       success: false,
       error: { code: 'NOT_AN_IMAGE', message: `File format .${extension} cannot be processed by the target size optimization engine.` },
@@ -179,22 +157,40 @@ export const optimizeTargetSize = async (req: AuthenticatedRequest, res: Respons
       fileId,
       originalPath,
       outputPath,
-      extension,
+      extension: extension.toLowerCase(),
       request: { targetSize, unit, forceTarget },
     });
 
     try {
+      await sessionFileRepository.updateFileStatus(
+        fileId,
+        result.status === 'failed' ? 'failed' : 'completed',
+        result.outputSize
+      );
+
       await supabase
-        .from('session_files')
-        .update({
-          file_size: result.outputSize,
-          status: result.status === 'failed' ? 'failed' : 'completed',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', fileId);
+        .from('app_sessions')
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq('id', sessionId);
     } catch {
       // Ignore DB status update errors
     }
+
+    // Record temporary workspace history
+    await historyService.recordHistory({
+      sessionId,
+      userId: req.user.id,
+      fileId,
+      originalName: originalName || storedName,
+      extension: extension.toLowerCase(),
+      originalSize: result.originalSize,
+      outputSize: result.outputSize,
+      operation: 'Target Size Compression',
+      mode: `${targetSize}${unit}`,
+      status: result.status === 'failed' ? 'failed' : 'completed',
+      reductionPercentage: result.reductionPercentage,
+      resultStorageKey: `${fileId}-target.${extension}`,
+    });
 
     return res.status(200).json({
       success: true,
@@ -210,4 +206,3 @@ export const optimizeTargetSize = async (req: AuthenticatedRequest, res: Respons
     });
   }
 };
-

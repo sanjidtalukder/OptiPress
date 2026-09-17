@@ -1,29 +1,10 @@
 import { Response } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { validateFileBytes } from '../utils/file-validation.js';
 import { temporaryStorageService } from '../services/storage.service.js';
+import { sessionFileRepository } from '../services/file-repository.service.js';
 import { env } from '../config/env.js';
-
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co';
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// In-memory fallback file metadata store when DB is unreachable
-const memoryFiles = new Map<string, {
-  id: string;
-  sessionId: string;
-  userId: string;
-  originalName: string;
-  storedName: string;
-  mimeType: string;
-  extension: string;
-  fileSize: number;
-  storageKey: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}>();
 
 export const uploadFile = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) {
@@ -61,7 +42,6 @@ export const uploadFile = async (req: AuthenticatedRequest, res: Response) => {
   // Determine active session ID
   let sessionId = (req.body.sessionId || req.headers['x-session-id'] || '').toString();
   if (!sessionId) {
-    // Generate deterministic session ID based on user ID if none provided
     sessionId = `app_sess_${req.user.id.substring(0, 8)}`;
   }
 
@@ -73,66 +53,9 @@ export const uploadFile = async (req: AuthenticatedRequest, res: Response) => {
 
   const now = new Date().toISOString();
 
-  try {
-    await temporaryStorageService.saveTemporaryFile(uploadedFile.path, sessionId, storedName);
+  await temporaryStorageService.saveTemporaryFile(uploadedFile.path, sessionId, storedName);
 
-    // Save metadata to Supabase DB `session_files` table
-    const { data, error } = await supabase
-      .from('session_files')
-      .insert({
-        id: fileId,
-        session_id: sessionId,
-        user_id: req.user.id,
-        original_name: uploadedFile.originalname,
-        stored_name: storedName,
-        mime_type: validation.mimeType,
-        extension: validation.detectedExtension,
-        file_size: uploadedFile.size,
-        storage_key: storageKey,
-        status: 'uploaded',
-        created_at: now,
-        updated_at: now,
-      })
-      .select('id, session_id, user_id, original_name, stored_name, mime_type, extension, file_size, status, created_at, updated_at')
-      .single();
-
-    if (!error && data) {
-      const fileRecord = {
-        id: data.id,
-        sessionId: data.session_id,
-        userId: data.user_id,
-        originalName: data.original_name,
-        storedName: data.stored_name,
-        mimeType: data.mime_type,
-        extension: data.extension,
-        fileSize: Number(data.file_size),
-        storageKey,
-        status: data.status,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      };
-
-      memoryFiles.set(fileId, fileRecord);
-
-      return res.status(201).json({
-        success: true,
-        data: {
-          id: fileRecord.id,
-          originalName: fileRecord.originalName,
-          mimeType: fileRecord.mimeType,
-          extension: fileRecord.extension,
-          size: fileRecord.fileSize,
-          status: fileRecord.status,
-          createdAt: fileRecord.createdAt,
-        },
-      });
-    }
-  } catch {
-    // Proceed to fallback memory store
-  }
-
-  // Memory fallback insertion
-  const memoryRecord = {
+  const fileRecord = await sessionFileRepository.saveFileRecord({
     id: fileId,
     sessionId,
     userId: req.user.id,
@@ -145,20 +68,18 @@ export const uploadFile = async (req: AuthenticatedRequest, res: Response) => {
     status: 'uploaded',
     createdAt: now,
     updatedAt: now,
-  };
-
-  memoryFiles.set(fileId, memoryRecord);
+  });
 
   return res.status(201).json({
     success: true,
     data: {
-      id: memoryRecord.id,
-      originalName: memoryRecord.originalName,
-      mimeType: memoryRecord.mimeType,
-      extension: memoryRecord.extension,
-      size: memoryRecord.fileSize,
-      status: memoryRecord.status,
-      createdAt: memoryRecord.createdAt,
+      id: fileRecord.id,
+      originalName: fileRecord.originalName,
+      mimeType: fileRecord.mimeType,
+      extension: fileRecord.extension,
+      size: fileRecord.fileSize,
+      status: fileRecord.status,
+      createdAt: fileRecord.createdAt,
     },
   });
 };
@@ -168,57 +89,24 @@ export const getFiles = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required.' } });
   }
 
-  try {
-    const { data, error } = await supabase
-      .from('session_files')
-      .select('id, session_id, user_id, original_name, stored_name, mime_type, extension, file_size, status, created_at, updated_at')
-      .eq('user_id', req.user.id)
-      .neq('status', 'deleted')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      const files = data.map((f) => ({
-        id: f.id,
-        sessionId: f.session_id,
-        userId: f.user_id,
-        originalName: f.original_name,
-        storedName: f.stored_name,
-        mimeType: f.mime_type,
-        extension: f.extension,
-        size: Number(f.file_size),
-        status: f.status,
-        createdAt: f.created_at,
-        updatedAt: f.updated_at,
-      }));
-
-      return res.status(200).json({
-        success: true,
-        data: { files },
-      });
-    }
-  } catch {
-    // Memory fallback
-  }
-
-  const userMemoryFiles = Array.from(memoryFiles.values())
-    .filter((f) => f.userId === req.user?.id && f.status !== 'deleted')
-    .map((f) => ({
-      id: f.id,
-      sessionId: f.sessionId,
-      userId: f.userId,
-      originalName: f.originalName,
-      storedName: f.storedName,
-      mimeType: f.mimeType,
-      extension: f.extension,
-      size: f.fileSize,
-      status: f.status,
-      createdAt: f.createdAt,
-      updatedAt: f.updatedAt,
-    }));
-
+  const files = await sessionFileRepository.getUserFiles(req.user.id);
   return res.status(200).json({
     success: true,
-    data: { files: userMemoryFiles },
+    data: {
+      files: files.map((f) => ({
+        id: f.id,
+        sessionId: f.sessionId,
+        userId: f.userId,
+        originalName: f.originalName,
+        storedName: f.storedName,
+        mimeType: f.mimeType,
+        extension: f.extension,
+        size: f.fileSize,
+        status: f.status,
+        createdAt: f.createdAt,
+        updatedAt: f.updatedAt,
+      })),
+    },
   });
 };
 
@@ -228,64 +116,32 @@ export const getFileById = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   const fileId = req.params.id;
+  const file = await sessionFileRepository.getFileRecord(fileId, req.user.id);
 
-  try {
-    const { data, error } = await supabase
-      .from('session_files')
-      .select('id, session_id, user_id, original_name, stored_name, mime_type, extension, file_size, status, created_at, updated_at')
-      .eq('id', fileId)
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (!error && data) {
-      return res.status(200).json({
-        success: true,
-        data: {
-          file: {
-            id: data.id,
-            sessionId: data.session_id,
-            userId: data.user_id,
-            originalName: data.original_name,
-            storedName: data.stored_name,
-            mimeType: data.mime_type,
-            extension: data.extension,
-            size: Number(data.file_size),
-            status: data.status,
-            createdAt: data.created_at,
-            updatedAt: data.updated_at,
-          },
-        },
-      });
-    }
-  } catch {
-    // Memory fallback
-  }
-
-  const memoryFile = memoryFiles.get(fileId);
-  if (memoryFile && memoryFile.userId === req.user.id && memoryFile.status !== 'deleted') {
-    return res.status(200).json({
-      success: true,
-      data: {
-        file: {
-          id: memoryFile.id,
-          sessionId: memoryFile.sessionId,
-          userId: memoryFile.userId,
-          originalName: memoryFile.originalName,
-          storedName: memoryFile.storedName,
-          mimeType: memoryFile.mimeType,
-          extension: memoryFile.extension,
-          size: memoryFile.fileSize,
-          status: memoryFile.status,
-          createdAt: memoryFile.createdAt,
-          updatedAt: memoryFile.updatedAt,
-        },
-      },
+  if (!file) {
+    return res.status(404).json({
+      success: false,
+      error: { code: 'FILE_NOT_FOUND', message: 'Requested file not found or unauthorized.' },
     });
   }
 
-  return res.status(404).json({
-    success: false,
-    error: { code: 'FILE_NOT_FOUND', message: 'Requested file not found or unauthorized.' },
+  return res.status(200).json({
+    success: true,
+    data: {
+      file: {
+        id: file.id,
+        sessionId: file.sessionId,
+        userId: file.userId,
+        originalName: file.originalName,
+        storedName: file.storedName,
+        mimeType: file.mimeType,
+        extension: file.extension,
+        size: file.fileSize,
+        status: file.status,
+        createdAt: file.createdAt,
+        updatedAt: file.updatedAt,
+      },
+    },
   });
 };
 
@@ -295,36 +151,9 @@ export const deleteFile = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   const fileId = req.params.id;
-  let targetSessionId = '';
-  let targetStoredName = '';
-  let isAuthorized = false;
+  const deletedRecord = await sessionFileRepository.deleteFileRecord(fileId, req.user.id);
 
-  try {
-    const { data } = await supabase
-      .from('session_files')
-      .select('session_id, user_id, stored_name')
-      .eq('id', fileId)
-      .single();
-
-    if (data && data.user_id === req.user.id) {
-      targetSessionId = data.session_id;
-      targetStoredName = data.stored_name;
-      isAuthorized = true;
-    }
-  } catch {
-    // Check memory fallback
-  }
-
-  if (!isAuthorized) {
-    const memoryRecord = memoryFiles.get(fileId);
-    if (memoryRecord && memoryRecord.userId === req.user.id) {
-      targetSessionId = memoryRecord.sessionId;
-      targetStoredName = memoryRecord.storedName;
-      isAuthorized = true;
-    }
-  }
-
-  if (!isAuthorized) {
+  if (!deletedRecord) {
     return res.status(404).json({
       success: false,
       error: { code: 'FILE_NOT_FOUND', message: 'Requested file not found or unauthorized.' },
@@ -332,21 +161,68 @@ export const deleteFile = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   // Delete physical file from disk
-  if (targetSessionId && targetStoredName) {
-    await temporaryStorageService.deleteTemporaryFile(targetSessionId, targetStoredName);
+  if (deletedRecord.sessionId && deletedRecord.storedName) {
+    await temporaryStorageService.deleteTemporaryFile(deletedRecord.sessionId, deletedRecord.storedName);
   }
-
-  // Delete/update database metadata record
-  try {
-    await supabase.from('session_files').delete().eq('id', fileId).eq('user_id', req.user.id);
-  } catch {
-    // Ignore DB errors
-  }
-
-  memoryFiles.delete(fileId);
 
   return res.status(200).json({
     success: true,
     message: 'Temporary file deleted successfully.',
   });
+};
+
+export const downloadFile = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required.' } });
+  }
+
+  const fileId = req.params.id;
+  const type = (req.query.type || 'result').toString();
+
+  const fileRecord = await sessionFileRepository.getFileRecord(fileId, req.user.id);
+  if (!fileRecord) {
+    return res.status(404).json({
+      success: false,
+      error: { code: 'FILE_NOT_FOUND', message: 'Requested file not found or unauthorized.' },
+    });
+  }
+
+  const { sessionId, storedName, originalName, extension, mimeType } = fileRecord;
+
+  let downloadFileName = originalName;
+  let targetStoredName = storedName;
+
+  if (type === 'result') {
+    const candidates = [
+      `${fileId}-optimized.${extension.toLowerCase()}`,
+      `${fileId}-target.${extension.toLowerCase()}`,
+      storedName,
+    ];
+
+    for (const candidate of candidates) {
+      const p = temporaryStorageService.getFilePath(sessionId, candidate);
+      if (fs.existsSync(p)) {
+        targetStoredName = candidate;
+        if (candidate !== storedName) {
+          const nameParts = originalName.split('.');
+          const ext = nameParts.pop();
+          downloadFileName = `${nameParts.join('.')}-optimized.${ext}`;
+        }
+        break;
+      }
+    }
+  }
+
+  const physicalPath = temporaryStorageService.getFilePath(sessionId, targetStoredName);
+  if (!fs.existsSync(physicalPath)) {
+    return res.status(404).json({
+      success: false,
+      error: { code: 'FILE_NOT_FOUND', message: 'Temporary file missing or expired.' },
+    });
+  }
+
+  res.setHeader('Content-Type', mimeType || 'application/octet-stream');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  return res.download(physicalPath, downloadFileName);
 };

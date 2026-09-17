@@ -10,6 +10,7 @@ import {
   Sliders,
   AlertTriangle,
   Layers,
+  Download,
 } from 'lucide-react';
 import { SessionFileMetadata, PdfOptimizationMode, PdfOptimizationResult } from '@optipress/types';
 import { formatBytes } from '@/lib/utils';
@@ -26,7 +27,9 @@ interface PdfOptimizerCardProps {
 export function PdfOptimizerCard({ file, onOptimizationComplete }: PdfOptimizerCardProps) {
   const [selectedMode, setSelectedMode] = useState<PdfOptimizationMode>('smart');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [result, setResult] = useState<PdfOptimizationResult | null>(null);
 
   const { session } = useAuth();
@@ -39,6 +42,7 @@ export function PdfOptimizerCard({ file, onOptimizationComplete }: PdfOptimizerC
 
     setIsProcessing(true);
     setError(null);
+    setDownloadError(null);
 
     const res = await pdfOptimizerService.optimizePdf(file.id, selectedMode, session.accessToken);
 
@@ -52,6 +56,33 @@ export function PdfOptimizerCard({ file, onOptimizationComplete }: PdfOptimizerC
     }
 
     setIsProcessing(false);
+  };
+
+  const handleDownload = async () => {
+    if (!session?.accessToken) {
+      setDownloadError('Authentication session required to download optimized PDF.');
+      return;
+    }
+
+    if (!result?.outputFileId) {
+      setDownloadError('Optimized PDF file reference is missing. Please run optimization again.');
+      return;
+    }
+
+    setIsDownloading(true);
+    setDownloadError(null);
+
+    const download = await pdfOptimizerService.downloadOptimizedPdf(
+      result.outputFileId,
+      session.accessToken,
+      result.outputFileName || `${file.originalName.replace(/\.pdf$/i, '')}-optimized.pdf`
+    );
+
+    if (!download.success) {
+      setDownloadError(download.error || 'Optimized PDF download failed.');
+    }
+
+    setIsDownloading(false);
   };
 
   return (
@@ -198,6 +229,42 @@ export function PdfOptimizerCard({ file, onOptimizationComplete }: PdfOptimizerC
             </span>
             <span>Time: {result.processingTimeMs} ms</span>
           </div>
+
+          {result.outputFileId && (
+            <Button
+              variant="default"
+              size="default"
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="w-full font-semibold shadow-md gap-2"
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Downloading optimized PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  <span>Download Optimized PDF</span>
+                </>
+              )}
+            </Button>
+          )}
+
+          {!result.outputFileId && (
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-xs text-destructive flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>Optimized PDF file reference is missing. Please run optimization again.</span>
+            </div>
+          )}
+
+          {downloadError && (
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-xs text-destructive flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{downloadError}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
+import { cleanupService } from '../modules/cleanup/cleanup.service.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co';
 const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
@@ -154,3 +155,43 @@ export const deleteSession = async (req: AuthenticatedRequest, res: Response) =>
     message: 'Application session terminated.',
   });
 };
+
+export const clearWorkspaceSession = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } });
+  }
+
+  const targetSessionId = (req.body.sessionId || req.headers['x-session-id'] || '').toString();
+
+  if (targetSessionId) {
+    await cleanupService.cleanSessionWorkspace(req.user.id, targetSessionId);
+  } else {
+    // Delete all app_sessions for user if no specific sessionId provided
+    try {
+      const { data: sessions } = await supabase
+        .from('app_sessions')
+        .select('id')
+        .eq('user_id', req.user.id);
+
+      if (sessions) {
+        for (const s of sessions) {
+          await cleanupService.cleanSessionWorkspace(req.user.id, s.id);
+        }
+      }
+    } catch {
+      // Memory fallback scan
+    }
+  }
+
+  for (const [id, s] of memorySessions.entries()) {
+    if (s.userId === req.user.id && (!targetSessionId || id === targetSessionId)) {
+      memorySessions.delete(id);
+    }
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Temporary workspace cleared successfully. User session remains authenticated.',
+  });
+};
+

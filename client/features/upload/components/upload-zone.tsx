@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, Image as ImageIcon, CheckCircle2, AlertCircle, X, Shield, Loader2, Trash2, FileCheck } from 'lucide-react';
+import { Upload, FileText, Image as ImageIcon, CheckCircle2, AlertCircle, X, Loader2, Trash2, FileCheck } from 'lucide-react';
 import { siteConfig } from '@/config/site';
 import { formatBytes } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -13,10 +13,11 @@ import { useFileUpload } from '../hooks/use-file-upload';
 interface UploadZoneProps {
   sessionId?: string;
   onFileSelect?: (file: File) => void;
+  onOptimizationComplete?: () => void;
   disabled?: boolean;
 }
 
-export function UploadZone({ sessionId, disabled = false }: UploadZoneProps) {
+export function UploadZone({ sessionId, onFileSelect, onOptimizationComplete, disabled = false }: UploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -25,6 +26,7 @@ export function UploadZone({ sessionId, disabled = false }: UploadZoneProps) {
   const handleFileSelection = async (file: File) => {
     clearError();
     await uploadLocalFile(file);
+    onFileSelect?.(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -203,7 +205,7 @@ export function UploadZone({ sessionId, disabled = false }: UploadZoneProps) {
                   </div>
 
                   {isImage && <ImageOptimizerCard file={file} />}
-                  {isPdf && <PdfOptimizerCard file={file} />}
+                  {isPdf && <PdfOptimizerCard file={file} onOptimizationComplete={onOptimizationComplete} />}
                 </div>
               );
             })}
