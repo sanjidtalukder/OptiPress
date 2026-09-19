@@ -100,81 +100,87 @@ export function WorkspaceView({ user, userPlan }: WorkspaceViewProps) {
           />
         </div>
 
-        {/* Right Column: Session & Identity Info */}
+        {/* Right Column: Account & Privacy Info */}
         <div className="space-y-6">
-          {/* Supabase Auth Identity Card */}
+          {/* Account Profile Card */}
           <Card className="border-border bg-card">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-primary" />
-                  Supabase Auth Identity
+                  <User className="h-4 w-4 text-primary" />
+                  Account Details
                 </CardTitle>
-                <Badge variant="outline" className="text-[10px]">Verified</Badge>
+                <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
+                  Verified
+                </Badge>
               </div>
               <CardDescription className="text-xs">
-                Authentication identity managed by Supabase SSR.
+                Your OptiPress account subscription & plan.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2.5 text-xs">
               <div className="flex justify-between items-center py-1 border-b border-border/50">
-                <span className="text-muted-foreground">User ID</span>
-                <span className="font-mono text-[11px] text-foreground font-semibold truncate max-w-[160px]">
-                  {user.id}
-                </span>
+                <span className="text-muted-foreground">Signed in as</span>
+                <span className="font-medium text-foreground truncate max-w-[170px]">{user.email}</span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-border/50">
-                <span className="text-muted-foreground">Email</span>
-                <span className="font-medium text-foreground">{user.email}</span>
+                <span className="text-muted-foreground">Account Plan</span>
+                <Badge variant="accent" className="text-[10px] capitalize">{userPlan} Plan</Badge>
               </div>
               <div className="flex justify-between items-center py-1">
-                <span className="text-muted-foreground">Account Plan</span>
-                <Badge variant="accent" className="text-[10px] capitalize">{userPlan} Tier</Badge>
+                <span className="text-muted-foreground">Workspace Status</span>
+                <span className="text-emerald-400 font-medium flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  Ready
+                </span>
               </div>
             </CardContent>
           </Card>
 
-          {/* Active Application Session Metadata Card */}
+          {/* Privacy & Cleanup Guarantee Card */}
           <Card className="border-border bg-card">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Cpu className="h-4 w-4 text-accent" />
-                  OptiPress Workspace Session
+                  <Shield className="h-4 w-4 text-accent" />
+                  Privacy & Data Security
                 </CardTitle>
                 <span className="flex h-2 w-2 rounded-full bg-accent animate-ping" />
               </div>
               <CardDescription className="text-xs">
-                Ephemeral workspace session bound to active tab.
+                Your files are temporary and protected.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2.5 text-xs">
-              <div className="flex justify-between items-center py-1 border-b border-border/50">
-                <span className="text-muted-foreground">Session ID</span>
-                <span className="font-mono text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded border border-accent/20 truncate max-w-[170px]">
-                  {appSessionId || 'Initializing...'}
-                </span>
+            <CardContent className="space-y-3 text-xs">
+              <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 space-y-1">
+                <span className="font-bold text-accent text-xs block">Automatic Cleanup</span>
+                <p className="text-muted-foreground text-[11px] leading-relaxed">
+                  Your files are temporary and automatically cleaned up for your privacy.
+                </p>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-border/50">
-                <span className="text-muted-foreground">Session Status</span>
-                <span className="font-mono text-[11px] text-success font-medium">Active (Ephemeral)</span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-muted-foreground">Refresh Policy</span>
-                <span className="font-mono text-[11px] text-accent">Clear Workspace</span>
+
+              <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                <div className="flex items-center justify-between py-1 border-b border-border/50">
+                  <span>File Storage</span>
+                  <span className="font-medium text-foreground">Encrypted Ephemeral</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span>File Cleanup</span>
+                  <span className="font-medium text-emerald-400">Automatic</span>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Persistence Guarantee Card */}
+          {/* Privacy Guarantee Card */}
           <Card className="border-border bg-muted/30">
-            <CardContent className="p-4 space-y-3 text-xs">
+            <CardContent className="p-4 space-y-2.5 text-xs">
               <div className="flex items-center gap-2 text-foreground font-semibold">
                 <RefreshCw className="h-4 w-4 text-primary" />
-                <span>Session Persistence</span>
+                <span>Session Guarantee</span>
               </div>
               <p className="text-muted-foreground leading-relaxed text-[11px]">
-                Refreshing your browser will <strong>NOT</strong> log you out. Your Supabase authentication session stays active, but temporary workspace files & history are cleared.
+                Your account session remains securely authenticated. Temporary files in active browser tabs can be cleared anytime using the <strong>Clear Workspace</strong> button above.
               </p>
             </CardContent>
           </Card>

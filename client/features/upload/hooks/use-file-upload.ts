@@ -24,7 +24,11 @@ export function useFileUpload(sessionId?: string) {
     }
   }, [isAuthenticated, session?.accessToken, fetchSessionFiles]);
 
-  const uploadLocalFile = async (file: File) => {
+  const uploadLocalFile = async (
+    file: File,
+    customAllowedExts?: string[],
+    customErrorMessage?: string
+  ) => {
     setError(null);
 
     // Client-side size pre-check
@@ -35,10 +39,12 @@ export function useFileUpload(sessionId?: string) {
     }
 
     // Client-side extension pre-check
-    const allowedExts = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+    const allowedExts = customAllowedExts || ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     if (!allowedExts.includes(ext)) {
-      const err = `Unsupported format (.${ext || 'unknown'}). Allowed: PDF, JPG, JPEG, PNG, WEBP.`;
+      const err =
+        customErrorMessage ||
+        `Unsupported format (.${ext || 'unknown'}). Allowed: ${allowedExts.join(', ').toUpperCase()}.`;
       setError(err);
       return { success: false, error: err };
     }

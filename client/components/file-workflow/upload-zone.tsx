@@ -14,6 +14,14 @@ interface ModernUploadZoneProps {
   onFileSelect?: (file: File) => void;
   onOptimizationComplete?: () => void;
   disabled?: boolean;
+  acceptTypes?: string;
+  allowedExtensions?: string[];
+  customErrorMessage?: string;
+  title?: string;
+  description?: string;
+  supportedBadges?: string[];
+  initialTabMode?: 'strategy' | 'target';
+  lockTabMode?: boolean;
 }
 
 export function ModernUploadZone({
@@ -21,6 +29,14 @@ export function ModernUploadZone({
   onFileSelect,
   onOptimizationComplete,
   disabled = false,
+  acceptTypes = '.pdf,.jpg,.jpeg,.png,.webp',
+  allowedExtensions,
+  customErrorMessage,
+  title = 'Upload your file',
+  description = 'Drop a PDF or image here, or browse from your computer.',
+  supportedBadges = ['PDF', 'JPG', 'PNG', 'WEBP'],
+  initialTabMode = 'strategy',
+  lockTabMode = false,
 }: ModernUploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [activeLocalFile, setActiveLocalFile] = useState<File | null>(null);
@@ -33,7 +49,7 @@ export function ModernUploadZone({
   const handleFileSelection = async (file: File) => {
     clearError();
     setActiveLocalFile(file);
-    const res = await uploadLocalFile(file);
+    const res = await uploadLocalFile(file, allowedExtensions, customErrorMessage);
     if (res.success) {
       onFileSelect?.(file);
     } else {
@@ -89,7 +105,7 @@ export function ModernUploadZone({
         ref={fileInputRef}
         onChange={handleFileChange}
         disabled={disabled || isUploading}
-        accept=".pdf,.jpg,.jpeg,.png,.webp"
+        accept={acceptTypes}
         className="hidden"
         id="optipress-file-input"
       />
@@ -102,6 +118,8 @@ export function ModernUploadZone({
           onReplaceFile={handleReplaceFile}
           onRemoveFile={handleRemoveFile}
           onOptimizationComplete={onOptimizationComplete}
+          initialTabMode={initialTabMode}
+          lockTabMode={lockTabMode}
         />
       ) : (
         /* BEFORE UPLOAD: Lightweight, welcoming drag-and-drop area */
@@ -139,10 +157,10 @@ export function ModernUploadZone({
 
                 <div className="space-y-1.5">
                   <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                    Upload your file
+                    {title}
                   </h3>
                   <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-                    Drop a PDF or image here, or browse from your computer.
+                    {description}
                   </p>
                 </div>
 
@@ -163,7 +181,7 @@ export function ModernUploadZone({
                 {/* Supported Formats */}
                 <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
                   <span className="text-[11px] text-muted-foreground font-medium mr-1">Supported formats:</span>
-                  {['PDF', 'JPG', 'PNG', 'WEBP'].map((fmt) => (
+                  {supportedBadges.map((fmt) => (
                     <Badge key={fmt} variant="outline" className="text-[10px] font-mono px-2 py-0.5">
                       {fmt}
                     </Badge>

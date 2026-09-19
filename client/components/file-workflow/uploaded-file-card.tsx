@@ -33,6 +33,8 @@ interface UploadedFileCardProps {
   onReplaceFile: () => void;
   onRemoveFile: () => void;
   onOptimizationComplete?: () => void;
+  initialTabMode?: 'strategy' | 'target';
+  lockTabMode?: boolean;
 }
 
 export function UploadedFileCard({
@@ -41,8 +43,10 @@ export function UploadedFileCard({
   onReplaceFile,
   onRemoveFile,
   onOptimizationComplete,
+  initialTabMode = 'strategy',
+  lockTabMode = false,
 }: UploadedFileCardProps) {
-  const [tabMode, setTabMode] = useState<'strategy' | 'target'>('strategy');
+  const [tabMode, setTabMode] = useState<'strategy' | 'target'>(initialTabMode);
 
   // Strategy Mode State
   const [strategyMode, setStrategyMode] = useState<OptimizationStrategyMode>('smart');
@@ -250,8 +254,8 @@ export function UploadedFileCard({
 
       {/* Step 4: Optimization Strategy / Target Size Selection */}
       <div className="rounded-3xl border border-border/80 bg-card p-6 space-y-6 shadow-sm">
-        {/* Mode Switcher Header for Images */}
-        {isImage && (
+        {/* Mode Switcher Header for Images (Hidden if tab mode is locked for dedicated tool) */}
+        {isImage && !lockTabMode && (
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <span className="text-xs font-semibold text-muted-foreground">Choose how to optimize</span>
             <div className="flex items-center rounded-lg bg-muted p-0.5 border border-border/60">
