@@ -5,6 +5,7 @@ import { validateFileBytes } from '../utils/file-validation.js';
 import { temporaryStorageService } from '../services/storage.service.js';
 import { sessionFileRepository } from '../services/file-repository.service.js';
 import { env } from '../config/env.js';
+import { downloadTypeSchema, isValidSessionId, isValidUuid } from '../utils/request-validation.js';
 
 export const uploadFile = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) {
@@ -41,6 +42,12 @@ export const uploadFile = async (req: AuthenticatedRequest, res: Response) => {
 
   // Determine active session ID
   let sessionId = (req.body.sessionId || req.headers['x-session-id'] || '').toString();
+  if (sessionId && !isValidSessionId(sessionId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_SESSION_ID', message: 'Invalid session identifier.' },
+    });
+  }
   if (!sessionId) {
     sessionId = `app_sess_${req.user.id.substring(0, 8)}`;
   }
@@ -116,6 +123,12 @@ export const getFileById = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   const fileId = req.params.id;
+  if (!isValidUuid(fileId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_FILE_ID', message: 'Invalid file identifier.' },
+    });
+  }
   const file = await sessionFileRepository.getFileRecord(fileId, req.user.id);
 
   if (!file) {
@@ -151,6 +164,12 @@ export const deleteFile = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   const fileId = req.params.id;
+  if (!isValidUuid(fileId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_FILE_ID', message: 'Invalid file identifier.' },
+    });
+  }
   const deletedRecord = await sessionFileRepository.deleteFileRecord(fileId, req.user.id);
 
   if (!deletedRecord) {
@@ -177,7 +196,22 @@ export const downloadFile = async (req: AuthenticatedRequest, res: Response) => 
   }
 
   const fileId = req.params.id;
-  const type = (req.query.type || 'result').toString();
+  if (!isValidUuid(fileId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_FILE_ID', message: 'Invalid file identifier.' },
+    });
+  }
+
+  const typeParse = downloadTypeSchema.safeParse((req.query.type || 'result').toString());
+  if (!typeParse.success) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_DOWNLOAD_TYPE', message: 'Invalid download type.' },
+    });
+  }
+
+  const type = typeParse.data;
 
   const fileRecord = await sessionFileRepository.getFileRecord(fileId, req.user.id);
   if (!fileRecord) {
@@ -221,7 +255,11 @@ export const downloadFile = async (req: AuthenticatedRequest, res: Response) => 
     });
   }
 
-  res.setHeader('Content-Type', mimeType || 'application/octet-stream');
+  const safeMimeType = mimeType === 'application/pdf' || mimeType.startsWith('image/')
+    ? mimeType
+    : 'application/octet-stream';
+
+  res.setHeader('Content-Type', safeMimeType);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   return res.download(physicalPath, downloadFileName);

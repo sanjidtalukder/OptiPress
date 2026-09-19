@@ -10,6 +10,10 @@ export class TemporaryStorageService {
     this.baseDir = path.resolve(process.cwd(), env.TEMPORARY_STORAGE_PATH || './storage/temporary');
   }
 
+  getBaseDir(): string {
+    return this.baseDir;
+  }
+
   /**
    * Sanitizes identifier to prevent path traversal attacks.
    */
@@ -22,9 +26,9 @@ export class TemporaryStorageService {
    */
   async ensureSessionDir(sessionId: string): Promise<string> {
     const safeSessionId = this.sanitizeId(sessionId);
-    const sessionDirPath = path.join(this.baseDir, safeSessionId);
+    const sessionDirPath = this.resolveWithinBase(safeSessionId);
 
-    await fs.promises.mkdir(sessionDirPath, { recursive: true });
+    await fs.promises.mkdir(sessionDirPath, { recursive: true, mode: 0o700 });
     return sessionDirPath;
   }
 
@@ -36,9 +40,20 @@ export class TemporaryStorageService {
     const fileId = crypto.randomUUID();
     const safeExt = extension.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     const storedName = `${fileId}.${safeExt}`;
-    const storageKey = path.join(safeSessionId, storedName);
+    const storageKey = path.posix.join(safeSessionId, storedName);
 
     return { fileId, storedName, storageKey };
+  }
+
+  private resolveWithinBase(...segments: string[]): string {
+    const resolved = path.resolve(this.baseDir, ...segments);
+    const relative = path.relative(this.baseDir, resolved);
+
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      throw new Error('Resolved temporary storage path escaped storage root.');
+    }
+
+    return resolved;
   }
 
   /**
@@ -47,7 +62,7 @@ export class TemporaryStorageService {
   getFilePath(sessionId: string, storedName: string): string {
     const safeSessionId = this.sanitizeId(sessionId);
     const safeStoredName = path.basename(storedName);
-    return path.join(this.baseDir, safeSessionId, safeStoredName);
+    return this.resolveWithinBase(safeSessionId, safeStoredName);
   }
 
   /**
@@ -55,9 +70,10 @@ export class TemporaryStorageService {
    */
   async saveTemporaryFile(sourcePath: string, sessionId: string, storedName: string): Promise<string> {
     const sessionDir = await this.ensureSessionDir(sessionId);
-    const targetPath = path.join(sessionDir, storedName);
+    const targetPath = this.resolveWithinBase(path.basename(sessionDir), path.basename(storedName));
 
     await fs.promises.copyFile(sourcePath, targetPath);
+    await fs.promises.chmod(targetPath, 0o600).catch(() => {});
     await fs.promises.unlink(sourcePath).catch(() => {});
 
     return targetPath;
@@ -70,7 +86,7 @@ export class TemporaryStorageService {
     try {
       const safeSessionId = this.sanitizeId(sessionId);
       const safeStoredName = path.basename(storedName);
-      const targetPath = path.join(this.baseDir, safeSessionId, safeStoredName);
+      const targetPath = this.resolveWithinBase(safeSessionId, safeStoredName);
 
       if (fs.existsSync(targetPath)) {
         await fs.promises.unlink(targetPath);

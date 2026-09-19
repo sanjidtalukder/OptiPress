@@ -21,13 +21,20 @@ export class CleanupService {
    */
   async deleteDirectorySafely(dirPath: string): Promise<boolean> {
     try {
-      if (fs.existsSync(dirPath)) {
-        await fs.promises.rm(dirPath, { recursive: true, force: true });
+      const resolvedPath = path.resolve(dirPath);
+      const relative = path.relative(this.baseStorageDir, resolvedPath);
+      if (relative.startsWith('..') || path.isAbsolute(relative) || resolvedPath === this.baseStorageDir) {
+        console.error('Cleanup refused to delete path outside temporary storage root.');
+        return false;
+      }
+
+      if (fs.existsSync(resolvedPath)) {
+        await fs.promises.rm(resolvedPath, { recursive: true, force: true });
         return true;
       }
       return false;
     } catch (err) {
-      console.error(`⚠️ Directory deletion warning for ${dirPath}:`, err instanceof Error ? err.message : err);
+      console.error('Directory deletion warning:', err instanceof Error ? err.message : err);
       return false;
     }
   }
@@ -53,7 +60,11 @@ export class CleanupService {
 
       return true;
     } catch (err) {
-      console.error(`❌ Failed to clean session workspace for session ${sessionId}:`, err);
+      console.error('Failed to clean session workspace:', {
+        userId,
+        sessionId,
+        message: err instanceof Error ? err.message : 'Unknown cleanup error',
+      });
       return false;
     }
   }
@@ -143,7 +154,9 @@ export class CleanupService {
         if (!entry.isDirectory()) continue;
 
         const sessionDirName = entry.name;
-        const dirPath = path.join(this.baseStorageDir, sessionDirName);
+        const dirPath = path.resolve(this.baseStorageDir, sessionDirName);
+        const relative = path.relative(this.baseStorageDir, dirPath);
+        if (relative.startsWith('..') || path.isAbsolute(relative)) continue;
 
         try {
           const stat = await fs.promises.stat(dirPath);

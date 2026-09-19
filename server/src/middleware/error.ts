@@ -16,7 +16,7 @@ export class AppError extends Error {
 
 export const errorHandler = (
   err: Error | AppError,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ) => {
@@ -26,7 +26,7 @@ export const errorHandler = (
   const message = isAppError ? err.message : 'An unexpected server error occurred.';
 
   if (env.NODE_ENV !== 'production' && !isAppError) {
-    console.error('Unhandled Error:', err);
+    console.error('Unhandled Error:', { requestId: req.requestId, message: err.message, stack: err.stack });
   }
 
   res.status(statusCode).json({
@@ -34,6 +34,7 @@ export const errorHandler = (
     error: {
       code: errorCode,
       message,
+      requestId: req.requestId,
       ...(isAppError && err.details ? { details: err.details } : {}),
     },
   });

@@ -7,6 +7,7 @@ import { imageOptimizationService } from '../services/image.service.js';
 import { historyService } from '../services/history.service.js';
 import { sessionFileRepository } from '../services/file-repository.service.js';
 import { ImageOptimizationMode } from '@optipress/types';
+import { isValidUuid } from '../utils/request-validation.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co';
 const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
@@ -24,6 +25,13 @@ export const optimizeImage = async (req: AuthenticatedRequest, res: Response) =>
   }
 
   const fileId = req.params.fileId;
+  if (!isValidUuid(fileId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_FILE_ID', message: 'Invalid file identifier.' },
+    });
+  }
+
   const parseResult = optimizeSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({
@@ -117,6 +125,13 @@ export const optimizeTargetSize = async (req: AuthenticatedRequest, res: Respons
   }
 
   const fileId = req.params.fileId;
+  if (!isValidUuid(fileId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_FILE_ID', message: 'Invalid file identifier.' },
+    });
+  }
+
   const parseResult = targetSizeSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({
