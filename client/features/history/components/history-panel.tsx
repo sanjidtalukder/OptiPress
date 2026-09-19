@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { History, Download, Trash2, ArrowDownRight, FileText, Image as ImageIcon, Sparkles, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { History, Download, Trash2, ArrowDownRight, FileText, Image as ImageIcon, Sparkles, Clock, CheckCircle2, AlertTriangle, Shield } from 'lucide-react';
 import { formatBytes } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,19 +22,19 @@ export function HistoryPanel({ history, isLoading = false, onDownload, onRemove 
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-bold flex items-center gap-2">
             <History className="h-4 w-4 text-primary" />
-            Recent Workspace Files
+            Your files
           </CardTitle>
           <CardDescription className="text-xs">
-            Completed optimizations during your active workspace session.
+            Files are temporary and automatically removed for your privacy.
           </CardDescription>
         </CardHeader>
         <CardContent className="py-8 text-center space-y-2">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted mx-auto text-muted-foreground">
             <History className="h-6 w-6" />
           </div>
-          <p className="text-xs font-medium text-foreground">No recent optimizations yet</p>
+          <p className="text-xs font-medium text-foreground">No optimized files yet</p>
           <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-            Uploaded and compressed files in this workspace session will appear here temporarily.
+            Your recently optimized files will appear here during your session.
           </p>
         </CardContent>
       </Card>
@@ -47,15 +47,16 @@ export function HistoryPanel({ history, isLoading = false, onDownload, onRemove 
         <div>
           <CardTitle className="text-sm font-bold flex items-center gap-2">
             <History className="h-4 w-4 text-primary" />
-            Recent Workspace Files ({history.length})
+            Your files ({history.length})
           </CardTitle>
           <CardDescription className="text-xs">
-            Ephemeral history bound to current workspace session.
+            Files are temporary and automatically removed for your privacy.
           </CardDescription>
         </div>
-        <Badge variant="outline" className="text-[10px] font-mono">
-          Session Bound
-        </Badge>
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
+          <Shield className="h-3.5 w-3.5 text-accent" />
+          <span>Privacy protected</span>
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-3">
@@ -121,7 +122,7 @@ export function HistoryPanel({ history, isLoading = false, onDownload, onRemove 
                       {item.reductionPercentage > 0 && (
                         <span className="inline-flex items-center gap-0.5 text-accent font-semibold text-[11px]">
                           <ArrowDownRight className="h-3 w-3" />
-                          {item.reductionPercentage.toFixed(1)}% smaller
+                          Size Reduced {item.reductionPercentage.toFixed(1)}%
                         </span>
                       )}
                     </div>
@@ -134,8 +135,8 @@ export function HistoryPanel({ history, isLoading = false, onDownload, onRemove 
                       variant="outline"
                       size="sm"
                       onClick={() => onDownload(item)}
-                      className="h-8 px-2.5 text-xs font-medium gap-1.5 shadow-xs"
-                      title="Download result file (Does not delete file)"
+                      className="h-8 px-2.5 text-xs font-semibold gap-1.5 shadow-xs"
+                      title="Download file"
                     >
                       <Download className="h-3.5 w-3.5 text-primary" />
                       <span>Download</span>
@@ -148,7 +149,7 @@ export function HistoryPanel({ history, isLoading = false, onDownload, onRemove 
                       size="sm"
                       onClick={() => onRemove(item.id)}
                       className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                      title="Remove from temporary history"
+                      title="Remove file"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -160,7 +161,7 @@ export function HistoryPanel({ history, isLoading = false, onDownload, onRemove 
               <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
                 <span className="flex items-center gap-1">
                   <Sparkles className="h-3 w-3 text-accent" />
-                  {item.operation} ({item.mode})
+                  {item.operation}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
@@ -174,3 +175,4 @@ export function HistoryPanel({ history, isLoading = false, onDownload, onRemove 
     </Card>
   );
 }
+

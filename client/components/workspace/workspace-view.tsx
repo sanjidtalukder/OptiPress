@@ -39,14 +39,14 @@ export function WorkspaceView({ user, userPlan }: WorkspaceViewProps) {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <Badge variant="accent" className="gap-1 text-[10px] uppercase font-mono">
-              <Shield className="h-3 w-3" /> Authenticated Workspace
+              <Shield className="h-3 w-3" /> Secure Workspace
             </Badge>
             <Badge variant="outline" className="text-[10px] font-mono">
-              Session Active
+              Active
             </Badge>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            OptiPress Target-Size & Ephemeral Workspace
+            OptiPress File Optimization Workspace
           </h1>
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <User className="h-3.5 w-3.5 text-primary" />
@@ -72,10 +72,10 @@ export function WorkspaceView({ user, userPlan }: WorkspaceViewProps) {
               <div>
                 <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-accent" />
-                  Target-Size & Format Compression Tool
+                  Optimize PDF & Images
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Select your PDF or Image to initialize ephemeral processing.
+                  Upload your file to optimize size and visual quality.
                 </p>
               </div>
             </div>
