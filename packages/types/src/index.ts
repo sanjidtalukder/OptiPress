@@ -57,6 +57,7 @@ export interface SessionFileMetadata {
   mimeType: string;
   extension: string;
   fileSize: number;
+  size?: number;
   status: 'uploaded' | 'processing' | 'completed' | 'failed' | 'deleted';
   createdAt: string;
   updatedAt: string;
@@ -91,6 +92,8 @@ export type ImageOptimizationMode = 'smart' | 'quality' | 'maximum';
 
 export interface ImageOptimizationResult {
   fileId: string;
+  outputFileId?: string;
+  outputFileName?: string;
   originalSize: number;
   optimizedSize: number;
   reductionBytes: number;
@@ -145,6 +148,8 @@ export interface TargetSizeOptimizationRequest {
 
 export interface TargetSizeOptimizationResult {
   fileId: string;
+  outputFileId?: string;
+  outputFileName?: string;
   status: TargetSizeResultState;
   originalSize: number;
   targetSizeBytes: number;

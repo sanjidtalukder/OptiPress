@@ -11,6 +11,7 @@ import {
   Target,
   ShieldCheck,
   Zap,
+  Download,
 } from 'lucide-react';
 import {
   SessionFileMetadata,
@@ -43,7 +44,9 @@ export function ImageOptimizerCard({ file, onOptimizationComplete }: ImageOptimi
   const [forceTarget, setForceTarget] = useState<boolean>(false);
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Results state
   const [strategyResult, setStrategyResult] = useState<ImageOptimizationResult | null>(null);
@@ -67,6 +70,7 @@ export function ImageOptimizerCard({ file, onOptimizationComplete }: ImageOptimi
 
     setIsProcessing(true);
     setError(null);
+    setDownloadError(null);
     setTargetResult(null);
 
     const res = await imageOptimizerService.optimizeImage(file.id, selectedStrategy, session.accessToken);
@@ -97,6 +101,7 @@ export function ImageOptimizerCard({ file, onOptimizationComplete }: ImageOptimi
 
     setIsProcessing(true);
     setError(null);
+    setDownloadError(null);
     setStrategyResult(null);
 
     const res = await imageOptimizerService.optimizeTargetSize(
@@ -121,6 +126,33 @@ export function ImageOptimizerCard({ file, onOptimizationComplete }: ImageOptimi
     setIsProcessing(false);
   };
 
+  const handleDownload = async (outputFileId?: string, outputFileName?: string) => {
+    if (!session?.accessToken) {
+      setDownloadError('Authentication session required to download optimized image.');
+      return;
+    }
+
+    if (!outputFileId) {
+      setDownloadError('Optimized image file reference is missing. Please run optimization again.');
+      return;
+    }
+
+    setIsDownloading(true);
+    setDownloadError(null);
+
+    const download = await imageOptimizerService.downloadOptimizedImage(
+      outputFileId,
+      session.accessToken,
+      outputFileName || `${file.originalName.replace(/\.[^/.]+$/, '')}-optimized.${file.extension}`
+    );
+
+    if (!download.success) {
+      setDownloadError(download.error || 'Optimized image download failed.');
+    }
+
+    setIsDownloading(false);
+  };
+
   return (
     <div className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-sm animate-fade-in">
       {/* Header */}
@@ -132,7 +164,7 @@ export function ImageOptimizerCard({ file, onOptimizationComplete }: ImageOptimi
           <div>
             <h4 className="text-sm font-bold text-foreground">Image Optimization Engine</h4>
             <p className="text-[11px] text-muted-foreground font-mono">
-              Source: <strong className="text-foreground">{file.originalName}</strong> ({formatBytes(file.fileSize)})
+              Source: <strong className="text-foreground">{file.originalName}</strong> ({formatBytes(file.fileSize || file.size)})
             </p>
           </div>
         </div>
@@ -336,7 +368,7 @@ export function ImageOptimizerCard({ file, onOptimizationComplete }: ImageOptimi
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 text-accent" />
-              Optimization Result
+              Optimization Result (Strategy Mode)
             </span>
             <Badge variant="accent" className="text-[10px] capitalize">
               {strategyResult.mode} Mode
@@ -367,6 +399,28 @@ export function ImageOptimizerCard({ file, onOptimizationComplete }: ImageOptimi
               </strong>
             </div>
           </div>
+
+          {strategyResult.outputFileId && (
+            <Button
+              variant="default"
+              size="default"
+              onClick={() => handleDownload(strategyResult.outputFileId, strategyResult.outputFileName)}
+              disabled={isDownloading}
+              className="w-full font-semibold shadow-md gap-2 mt-2"
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Downloading optimized image...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  <span>Download Optimized Image</span>
+                </>
+              )}
+            </Button>
+          )}
         </div>
       )}
 
@@ -386,7 +440,7 @@ export function ImageOptimizerCard({ file, onOptimizationComplete }: ImageOptimi
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-500">
-                  &warning; Target Unreachable
+                  Target Unreachable
                 </Badge>
               )}
 
@@ -425,10 +479,46 @@ export function ImageOptimizerCard({ file, onOptimizationComplete }: ImageOptimi
             </div>
 
             <div className="p-2.5 rounded-lg bg-background border border-border/60">
-              <span className="text-[10px] text-muted-foreground block">Quality Score</span>
-              <strong className="text-foreground text-xs font-mono">{targetResult.qualityScore || 80}/100</strong>
+              <span className="text-[10px] text-muted-foreground block">
+                {!targetResult.targetReached && targetResult.bestSafeSize ? 'Best Safe Size' : 'Quality Score'}
+              </span>
+              <strong className="text-foreground text-xs font-mono">
+                {!targetResult.targetReached && targetResult.bestSafeSize
+                  ? formatBytesBinary(targetResult.bestSafeSize)
+                  : `${targetResult.qualityScore || 80}/100`}
+              </strong>
             </div>
           </div>
+
+          {targetResult.outputFileId && (
+            <Button
+              variant="default"
+              size="default"
+              onClick={() => handleDownload(targetResult.outputFileId, targetResult.outputFileName)}
+              disabled={isDownloading}
+              className="w-full font-semibold shadow-md gap-2 mt-2"
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Downloading optimized image...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  <span>Download Optimized Image</span>
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Download Error Message */}
+      {downloadError && (
+        <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-xs text-destructive flex items-center gap-2 animate-fade-in">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{downloadError}</span>
         </div>
       )}
     </div>

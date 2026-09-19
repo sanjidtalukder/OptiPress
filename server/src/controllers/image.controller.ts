@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import path from 'path';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
@@ -59,20 +60,39 @@ export const optimizeImage = async (req: AuthenticatedRequest, res: Response) =>
     });
   }
 
+  const ext = extension.toLowerCase();
   const inputPath = temporaryStorageService.getFilePath(sessionId, storedName);
-  const outputPath = temporaryStorageService.getFilePath(sessionId, `${fileId}-optimized.${extension}`);
+  const outputFile = temporaryStorageService.generateStorageKey(sessionId, ext);
+  const outputPath = temporaryStorageService.getFilePath(sessionId, outputFile.storedName);
+  const parsedName = path.parse(originalName || storedName);
+  const outputFileName = `${parsedName.name || fileId}-optimized.${ext}`;
 
   try {
     const result = await imageOptimizationService.optimizeImage({
       fileId,
       inputPath,
       outputPath,
-      extension: extension.toLowerCase(),
+      extension: ext,
       mode,
     });
 
     try {
       await sessionFileRepository.updateFileStatus(fileId, 'completed', result.optimizedSize);
+
+      await sessionFileRepository.saveFileRecord({
+        id: outputFile.fileId,
+        sessionId,
+        userId: req.user.id,
+        originalName: outputFileName,
+        storedName: outputFile.storedName,
+        mimeType: ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : fileRecord.mimeType,
+        extension: ext,
+        fileSize: result.optimizedSize,
+        storageKey: outputFile.storageKey,
+        status: 'completed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
 
       await supabase
         .from('app_sessions')
@@ -86,21 +106,25 @@ export const optimizeImage = async (req: AuthenticatedRequest, res: Response) =>
     await historyService.recordHistory({
       sessionId,
       userId: req.user.id,
-      fileId,
+      fileId: outputFile.fileId,
       originalName: originalName || storedName,
-      extension: extension.toLowerCase(),
+      extension: ext,
       originalSize: result.originalSize,
       outputSize: result.optimizedSize,
       operation: 'Image Optimization',
       mode,
       status: 'completed',
       reductionPercentage: result.reductionPercentage,
-      resultStorageKey: `${fileId}-optimized.${extension}`,
+      resultStorageKey: outputFile.storedName,
     });
 
     return res.status(200).json({
       success: true,
-      data: result,
+      data: {
+        ...result,
+        outputFileId: outputFile.fileId,
+        outputFileName,
+      },
     });
   } catch (err) {
     return res.status(500).json({
@@ -163,8 +187,12 @@ export const optimizeTargetSize = async (req: AuthenticatedRequest, res: Respons
     });
   }
 
+  const ext = extension.toLowerCase();
   const originalPath = temporaryStorageService.getFilePath(sessionId, storedName);
-  const outputPath = temporaryStorageService.getFilePath(sessionId, `${fileId}-target.${extension}`);
+  const outputFile = temporaryStorageService.generateStorageKey(sessionId, ext);
+  const outputPath = temporaryStorageService.getFilePath(sessionId, outputFile.storedName);
+  const parsedName = path.parse(originalName || storedName);
+  const outputFileName = `${parsedName.name || fileId}-target.${ext}`;
 
   try {
     const { targetSizeService } = await import('../services/target-size.service.js');
@@ -172,7 +200,7 @@ export const optimizeTargetSize = async (req: AuthenticatedRequest, res: Respons
       fileId,
       originalPath,
       outputPath,
-      extension: extension.toLowerCase(),
+      extension: ext,
       request: { targetSize, unit, forceTarget },
     });
 
@@ -182,6 +210,21 @@ export const optimizeTargetSize = async (req: AuthenticatedRequest, res: Respons
         result.status === 'failed' ? 'failed' : 'completed',
         result.outputSize
       );
+
+      await sessionFileRepository.saveFileRecord({
+        id: outputFile.fileId,
+        sessionId,
+        userId: req.user.id,
+        originalName: outputFileName,
+        storedName: outputFile.storedName,
+        mimeType: ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : fileRecord.mimeType,
+        extension: ext,
+        fileSize: result.outputSize,
+        storageKey: outputFile.storageKey,
+        status: result.status === 'failed' ? 'failed' : 'completed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
 
       await supabase
         .from('app_sessions')
@@ -195,21 +238,25 @@ export const optimizeTargetSize = async (req: AuthenticatedRequest, res: Respons
     await historyService.recordHistory({
       sessionId,
       userId: req.user.id,
-      fileId,
+      fileId: outputFile.fileId,
       originalName: originalName || storedName,
-      extension: extension.toLowerCase(),
+      extension: ext,
       originalSize: result.originalSize,
       outputSize: result.outputSize,
       operation: 'Target Size Compression',
       mode: `${targetSize}${unit}`,
       status: result.status === 'failed' ? 'failed' : 'completed',
       reductionPercentage: result.reductionPercentage,
-      resultStorageKey: `${fileId}-target.${extension}`,
+      resultStorageKey: outputFile.storedName,
     });
 
     return res.status(200).json({
       success: true,
-      data: result,
+      data: {
+        ...result,
+        outputFileId: outputFile.fileId,
+        outputFileName,
+      },
     });
   } catch (err) {
     return res.status(500).json({

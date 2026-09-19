@@ -186,7 +186,7 @@ export function UploadZone({ sessionId, onFileSelect, onOptimizationComplete, di
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">
-                          Size: <strong className="text-foreground">{formatBytes(file.fileSize)}</strong>
+                          Size: <strong className="text-foreground">{formatBytes(file.fileSize || file.size)}</strong>
                         </p>
                       </div>
                     </div>
@@ -204,7 +204,7 @@ export function UploadZone({ sessionId, onFileSelect, onOptimizationComplete, di
                     </div>
                   </div>
 
-                  {isImage && <ImageOptimizerCard file={file} />}
+                  {isImage && <ImageOptimizerCard file={file} onOptimizationComplete={onOptimizationComplete} />}
                   {isPdf && <PdfOptimizerCard file={file} onOptimizationComplete={onOptimizationComplete} />}
                 </div>
               );

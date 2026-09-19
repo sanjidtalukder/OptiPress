@@ -66,13 +66,21 @@ export class TargetSizeService {
     const tempDir = path.dirname(outputPath);
     const tempId = crypto.randomUUID();
 
+    const origMetadata = await sharp(originalPath).metadata().catch(() => null);
+    const origWidth = origMetadata?.width || 0;
+
     const candidates: CandidateMeta[] = [];
     let iterations = 0;
 
-    const encodeCandidate = async (q: number): Promise<{ meta: CandidateMeta; tempFile: string }> => {
+    const encodeCandidate = async (q: number, scale = 1.0): Promise<{ meta: CandidateMeta; tempFile: string }> => {
       iterations++;
-      const candPath = path.join(tempDir, `cand-${tempId}-${q}.${ext}`);
-      const instance = sharp(originalPath).rotate();
+      const candPath = path.join(tempDir, `cand-${tempId}-${scale}-${q}.${ext}`);
+      let instance = sharp(originalPath).rotate();
+
+      if (scale < 1.0 && origWidth > 0) {
+        const targetW = Math.max(100, Math.round(origWidth * scale));
+        instance = instance.resize({ width: targetW, withoutEnlargement: true });
+      }
 
       switch (ext) {
         case 'jpg':
@@ -122,8 +130,8 @@ export class TargetSizeService {
     let bestSafeSize: number | undefined = undefined;
 
     try {
-      // 2. Bound Check: Max Quality (q = 95)
-      const maxCand = await encodeCandidate(95);
+      // 2. Bound Check: Max Quality at full scale (q = 95, scale = 1.0)
+      const maxCand = await encodeCandidate(95, 1.0);
       candidates.push(maxCand.meta);
 
       if (maxCand.meta.size <= targetSizeBytes && maxCand.meta.isAcceptable) {
@@ -132,12 +140,27 @@ export class TargetSizeService {
       } else {
         await fs.promises.unlink(maxCand.tempFile).catch(() => {});
 
-        // 3. Bound Check: Min Quality (q = 15)
-        const minCand = await encodeCandidate(15);
+        // 3. Bound Check: Min Quality at full scale (q = 15, scale = 1.0)
+        let activeScale = 1.0;
+        let minCand = await encodeCandidate(15, activeScale);
         candidates.push(minCand.meta);
 
+        // If min quality at full resolution exceeds target, try downscaling scales
         if (minCand.meta.size > targetSizeBytes) {
-          // Even lowest quality exceeds target
+          const scalesToTry = [0.75, 0.5, 0.35, 0.25];
+          for (const s of scalesToTry) {
+            await fs.promises.unlink(minCand.tempFile).catch(() => {});
+            minCand = await encodeCandidate(15, s);
+            candidates.push(minCand.meta);
+            if (minCand.meta.size <= targetSizeBytes) {
+              activeScale = s;
+              break;
+            }
+          }
+        }
+
+        if (minCand.meta.size > targetSizeBytes) {
+          // Even lowest quality at smallest scale exceeds target
           if (request.forceTarget) {
             winningTempFile = minCand.tempFile;
             isForced = true;
@@ -155,7 +178,7 @@ export class TargetSizeService {
         } else {
           await fs.promises.unlink(minCand.tempFile).catch(() => {});
 
-          // 4. Binary Search Loop over quality (q = 15 .. 95)
+          // 4. Binary Search Loop over quality at active scale (q = 15 .. 95)
           let lowQ = 15;
           let highQ = 95;
           let bestValidCandFile: string | null = null;
@@ -163,7 +186,7 @@ export class TargetSizeService {
 
           while (lowQ <= highQ && iterations < TARGET_SIZE_CONFIG.MAX_ITERATIONS) {
             const midQ = Math.floor((lowQ + highQ) / 2);
-            const cand = await encodeCandidate(midQ);
+            const cand = await encodeCandidate(midQ, activeScale);
             candidates.push(cand.meta);
 
             if (cand.meta.size <= targetSizeBytes) {
