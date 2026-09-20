@@ -56,19 +56,19 @@ export function TargetSizeView() {
                   Target Size Workspace
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Upload an image and choose your target size.
+                  Upload a PDF or image and choose your target size.
                 </p>
               </div>
             </div>
 
             <UploadZone
               sessionId={appSessionId}
-              acceptTypes=".jpg,.jpeg,.png,.webp"
-              allowedExtensions={['jpg', 'jpeg', 'png', 'webp']}
-              customErrorMessage="Target Size tool accepts JPG, PNG, or WEBP images."
+              acceptTypes=".pdf,.jpg,.jpeg,.png,.webp"
+              allowedExtensions={['pdf', 'jpg', 'jpeg', 'png', 'webp']}
+              customErrorMessage={undefined}
               title="Upload file for Target Size optimization"
-              description="Drop an image here to reduce it to a specific KB or MB target size."
-              supportedBadges={['99 KB', '100 KB', '500 KB', '1 MB']}
+              description="Drop a PDF or image here to reduce it to your chosen file size."
+              supportedBadges={['PDF', 'JPG', 'PNG', 'WEBP']}
               initialTabMode="target"
               lockTabMode={true}
               onFileSelect={() => setTimeout(refetchHistory, 1000)}

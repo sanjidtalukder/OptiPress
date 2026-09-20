@@ -43,8 +43,8 @@ export function useWorkspaceSession() {
     if (!session?.accessToken || !appSessionId) return;
 
     const handlePageHide = () => {
-      const endpoint = `${baseUrl}/api/sessions/clear-beacon`;
-      const payload = JSON.stringify({ sessionId: appSessionId });
+      const endpoint = `${baseUrl}/api/sessions/clear-beacon?token=${encodeURIComponent(session.accessToken)}`;
+      const payload = JSON.stringify({ sessionId: appSessionId, token: session.accessToken });
 
       if (navigator.sendBeacon) {
         const blob = new Blob([payload], { type: 'application/json' });

@@ -109,14 +109,19 @@ export class SessionFileRepository {
     return null;
   }
 
-  async getUserFiles(userId: string): Promise<SessionFileRecord[]> {
+  async getUserFiles(userId: string, sessionId?: string): Promise<SessionFileRecord[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('session_files')
         .select('id, session_id, user_id, original_name, stored_name, mime_type, extension, file_size, storage_key, status, created_at, updated_at')
         .eq('user_id', userId)
-        .neq('status', 'deleted')
-        .order('created_at', { ascending: false });
+        .neq('status', 'deleted');
+
+      if (sessionId) {
+        query = query.eq('session_id', sessionId);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (!error && data) {
         return data.map((f) => ({
@@ -139,7 +144,7 @@ export class SessionFileRepository {
     }
 
     return Array.from(this.memoryFiles.values()).filter(
-      (f) => f.userId === userId && f.status !== 'deleted'
+      (f) => f.userId === userId && f.status !== 'deleted' && (!sessionId || f.sessionId === sessionId)
     );
   }
 

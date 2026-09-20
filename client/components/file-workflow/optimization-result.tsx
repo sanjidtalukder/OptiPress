@@ -7,6 +7,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   Sliders,
+  Info,
+  Sparkles,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +30,10 @@ interface OptimizationResultProps {
   outputFileId?: string;
   outputFileName?: string;
   onDownload: () => Promise<boolean>;
+  resultStatus?: string;
+  resultLabel?: string;
+  userMessage?: string;
+  qualityStatusText?: string;
   targetSizeInfo?: {
     targetSizeBytes: number;
     targetReached: boolean;
@@ -51,6 +57,10 @@ export function OptimizationResultView({
   optimizedSrc,
   outputFileName,
   onDownload,
+  resultStatus,
+  resultLabel,
+  userMessage,
+  qualityStatusText,
   targetSizeInfo,
   dimensions,
   pageCount,
@@ -63,20 +73,44 @@ export function OptimizationResultView({
   const displayFileName =
     outputFileName || `${originalName.replace(/\.[^/.]+$/, '')}_optimized.${parsedExt}`;
 
+  const isBestSafeResult = resultStatus === 'best_safe_result';
+  const isAlreadyOptimized = resultStatus === 'already_optimized';
+
+  const badgeText = resultLabel || (isBestSafeResult ? 'Best safe size' : isAlreadyOptimized ? 'Already optimized' : 'Smart Optimization');
+
   return (
     <div className="space-y-6 rounded-3xl border border-accent/40 bg-accent/5 p-6 shadow-md animate-fade-in">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-accent/20 pb-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Badge variant="accent" className="gap-1 text-[11px] font-bold px-2.5 py-0.5">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Optimization Complete
+            <Badge
+              variant={isBestSafeResult ? 'outline' : 'accent'}
+              className={`gap-1 text-[11px] font-bold px-2.5 py-0.5 ${
+                isBestSafeResult ? 'border-amber-500/50 bg-amber-500/10 text-amber-300' : ''
+              }`}
+            >
+              {isBestSafeResult ? (
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              {badgeText}
             </Badge>
-            <span className="text-xs text-muted-foreground font-medium">• Quality check passed</span>
+            <span className="text-xs text-muted-foreground font-medium">
+              • {qualityStatusText || 'Quality check passed'}
+            </span>
           </div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground">Optimization complete</h2>
-          <p className="text-xs text-muted-foreground">Your optimized file is ready.</p>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
+            {isAlreadyOptimized
+              ? 'File is already optimized'
+              : isBestSafeResult
+              ? 'Best safe size achieved'
+              : 'Optimization complete'}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {userMessage || 'Your optimized file is ready.'}
+          </p>
         </div>
 
         <Button
@@ -90,6 +124,32 @@ export function OptimizationResultView({
           <span>{showCompare ? 'Hide Comparison' : 'Compare'}</span>
         </Button>
       </div>
+
+      {/* Best Safe Size Supporting Explanation Banner */}
+      {isBestSafeResult && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 space-y-1">
+          <div className="flex items-center gap-2 font-bold text-sm">
+            <ShieldCheck className="h-4 w-4 text-amber-400" />
+            <span>Quality Protected</span>
+          </div>
+          <p className="leading-relaxed text-muted-foreground text-[11px]">
+            We couldn&apos;t safely reduce this file to 150 KB without noticeably affecting quality. OptiPress selected the best safe size that preserves visual &amp; document integrity.
+          </p>
+        </div>
+      )}
+
+      {/* Already Optimized Supporting Info Banner */}
+      {isAlreadyOptimized && (
+        <div className="p-4 rounded-2xl bg-primary/10 border border-primary/30 text-xs text-primary space-y-1">
+          <div className="flex items-center gap-2 font-bold text-sm">
+            <Info className="h-4 w-4 text-primary" />
+            <span>Already Optimized</span>
+          </div>
+          <p className="leading-relaxed text-muted-foreground text-[11px]">
+            Your file is already very small or highly compressed. Further compression would not provide a meaningful benefit, so we preserved your original file intact.
+          </p>
+        </div>
+      )}
 
       {/* Target Size Honest Result Banner (If Target Size Mode) */}
       {targetSizeInfo && (
@@ -184,7 +244,7 @@ export function OptimizationResultView({
       <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
         <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
           <ShieldCheck className="h-4 w-4" />
-          <span>Visual quality check passed</span>
+          <span>{qualityStatusText || 'Quality check passed'}</span>
         </div>
         <span className="font-mono text-[11px]">{displayFileName}</span>
       </div>

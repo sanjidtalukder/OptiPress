@@ -88,12 +88,28 @@ export interface OptimizationResult {
   expiresAt: string;
 }
 
+export type OptimizationResultStatus =
+  | 'success'
+  | 'best_safe_result'
+  | 'already_optimized'
+  | 'target_reached'
+  | 'target_unreachable'
+  | 'unsupported_feature'
+  | 'failed';
+
 export type ImageOptimizationMode = 'smart' | 'quality' | 'maximum';
 
 export interface ImageOptimizationResult {
   fileId: string;
   outputFileId?: string;
   outputFileName?: string;
+  status: OptimizationResultStatus;
+  resultLabel?: string;
+  userMessage?: string;
+  qualityProtected?: boolean;
+  qualityStatusText?: string;
+  bestSafeSize?: number;
+  isSmartTargetReached?: boolean;
   originalSize: number;
   optimizedSize: number;
   reductionBytes: number;
@@ -164,10 +180,21 @@ export interface TargetSizeOptimizationResult {
   iterationsCount?: number;
   message?: string;
   processingTimeMs: number;
+  savedBytes?: number;
+  compressionProfile?: string;
+  pdfType?: string;
+  imageCount?: number;
+  imagesOptimized?: number;
+  dpiReduction?: string;
+  jpegQuality?: number;
+  structuralCheck?: boolean;
+  textPreserved?: boolean;
+  pageCountPreserved?: boolean;
+  label?: 'LOSSLESS' | 'LOSSY OPTIMIZATION';
 }
 
 export type PdfOptimizationMode = 'smart' | 'quality' | 'maximum';
-export type PdfType = 'text' | 'image' | 'mixed';
+export type PdfType = 'text' | 'image' | 'mixed' | 'TEXT_VECTOR' | 'IMAGE_HEAVY' | 'SCANNED' | 'MIXED';
 
 export interface PdfAnalysisResult {
   pageCount: number;
@@ -185,11 +212,30 @@ export interface PdfOptimizationResult {
   fileId: string;
   outputFileId?: string;
   outputFileName?: string;
-  status: 'success' | 'already_optimized' | 'unsupported_feature' | 'failed';
+  status: OptimizationResultStatus;
+  resultLabel?: string;
+  userMessage?: string;
+  qualityProtected?: boolean;
+  qualityStatusText?: string;
+  bestSafeSize?: number;
+  isSmartTargetReached?: boolean;
   originalSize: number;
   optimizedSize: number;
   reductionBytes: number;
+  savedBytes?: number;
   reductionPercentage: number;
+  targetSize?: string | number;
+  targetAchieved?: boolean;
+  compressionProfile?: string;
+  imageCount?: number;
+  imagesOptimized?: number;
+  dpiReduction?: string;
+  jpegQuality?: number;
+  qualityScore?: number;
+  structuralCheck?: boolean;
+  textPreserved?: boolean;
+  pageCountPreserved?: boolean;
+  label?: 'LOSSLESS' | 'LOSSY OPTIMIZATION';
   pageCount: number;
   pdfType: PdfType;
   mode: PdfOptimizationMode;
@@ -255,6 +301,3 @@ export interface CleanupStats {
   durationMs: number;
   errorsCount: number;
 }
-
-
-

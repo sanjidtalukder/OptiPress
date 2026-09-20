@@ -8,7 +8,8 @@ import {
   TargetSizeResultState,
 } from '@optipress/types';
 import { TARGET_SIZE_CONFIG, parseTargetToBytes } from '@optipress/config';
-import { imageQualityEvaluator } from './quality-evaluator.service';
+import { imageQualityEvaluator } from './quality-evaluator.service.js';
+import { pdfOptimizer } from './pdf-optimizer.service.js';
 
 export interface TargetSizeServiceParams {
   fileId: string;
@@ -30,20 +31,27 @@ export class TargetSizeService {
   async optimizeTargetSize(
     params: TargetSizeServiceParams
   ): Promise<TargetSizeOptimizationResult> {
+    const { extension } = params;
+
+    if (extension.toLowerCase() === 'pdf') {
+      return this.optimizePdfTargetSize(params);
+    }
+
+    return this.optimizeImageTargetSize(params);
+  }
+
+  private async optimizePdfTargetSize(
+    params: TargetSizeServiceParams
+  ): Promise<TargetSizeOptimizationResult> {
     const startTime = Date.now();
-    const { fileId, originalPath, outputPath, extension, request } = params;
+    const { fileId, originalPath, outputPath, request } = params;
 
     const targetSizeBytes = parseTargetToBytes(request.targetSize, request.unit);
-    const ext = extension.toLowerCase();
-
-    // Verify original file exists and check stats
     const origStats = await fs.promises.stat(originalPath);
     const originalSize = origStats.size;
 
-    // 1. Safeguard: Already below target
     if (originalSize <= targetSizeBytes) {
       await fs.promises.copyFile(originalPath, outputPath);
-
       return {
         fileId,
         status: 'already_below_target',
@@ -51,6 +59,90 @@ export class TargetSizeService {
         targetSizeBytes,
         outputSize: originalSize,
         reductionBytes: 0,
+        savedBytes: 0,
+        reductionPercentage: 0,
+        qualityProtected: true,
+        targetReached: true,
+        forced: false,
+        qualityScore: 100,
+        iterationsCount: 0,
+        message: 'Original PDF file is already below target size. Preserved original document intact.',
+        processingTimeMs: Date.now() - startTime,
+        label: 'LOSSLESS',
+      };
+    }
+
+    const res = await pdfOptimizer.optimizePdf({
+      fileId,
+      inputPath: originalPath,
+      outputPath,
+      mode: 'smart',
+      targetSize: request.targetSize,
+      targetUnit: request.unit,
+      forceTarget: request.forceTarget,
+    });
+
+    let status: TargetSizeResultState = 'success';
+    if (res.status === 'best_safe_result') {
+      status = 'target_unreachable';
+    } else if (res.status === 'failed') {
+      status = 'failed';
+    }
+
+    return {
+      fileId,
+      outputFileId: res.outputFileId,
+      outputFileName: res.outputFileName,
+      status,
+      originalSize,
+      targetSizeBytes,
+      outputSize: res.optimizedSize,
+      reductionBytes: res.reductionBytes,
+      savedBytes: res.savedBytes,
+      reductionPercentage: res.reductionPercentage,
+      qualityProtected: res.qualityProtected ?? true,
+      targetReached: res.targetAchieved ?? true,
+      forced: Boolean(request.forceTarget),
+      bestSafeSize: res.bestSafeSize,
+      qualityScore: res.qualityScore || 85,
+      iterationsCount: 4,
+      message: res.userMessage || res.message,
+      processingTimeMs: res.processingTimeMs,
+      compressionProfile: res.compressionProfile,
+      pdfType: res.pdfType,
+      imageCount: res.imageCount,
+      imagesOptimized: res.imagesOptimized,
+      dpiReduction: res.dpiReduction,
+      jpegQuality: res.jpegQuality,
+      structuralCheck: res.structuralCheck,
+      textPreserved: res.textPreserved,
+      pageCountPreserved: res.pageCountPreserved,
+      label: res.label,
+    };
+  }
+
+  private async optimizeImageTargetSize(
+    params: TargetSizeServiceParams
+  ): Promise<TargetSizeOptimizationResult> {
+    const startTime = Date.now();
+    const { fileId, originalPath, outputPath, extension, request } = params;
+
+    const targetSizeBytes = parseTargetToBytes(request.targetSize, request.unit);
+    const ext = extension.toLowerCase();
+
+    const origStats = await fs.promises.stat(originalPath);
+    const originalSize = origStats.size;
+
+    if (originalSize <= targetSizeBytes) {
+      await fs.promises.copyFile(originalPath, outputPath);
+      return {
+        fileId,
+        status: 'already_below_target',
+        originalSize,
+        targetSizeBytes,
+        outputSize: originalSize,
+        reductionBytes: 0,
+        savedBytes: 0,
         reductionPercentage: 0,
         qualityProtected: true,
         targetReached: true,
@@ -59,10 +151,10 @@ export class TargetSizeService {
         iterationsCount: 0,
         message: 'Original file is already below target size. Preserved original quality.',
         processingTimeMs: Date.now() - startTime,
+        label: 'LOSSLESS',
       };
     }
 
-    // Prepare temp directory for candidate evaluation
     const tempDir = path.dirname(outputPath);
     const tempId = crypto.randomUUID();
 
@@ -85,23 +177,13 @@ export class TargetSizeService {
       switch (ext) {
         case 'jpg':
         case 'jpeg':
-          await instance
-            .jpeg({ quality: q, progressive: true, mozjpeg: true })
-            .toFile(candPath);
+          await instance.jpeg({ quality: q, progressive: true, mozjpeg: true }).toFile(candPath);
           break;
         case 'png':
-          await instance
-            .png({
-              compressionLevel: 9,
-              quality: q,
-              palette: true,
-            })
-            .toFile(candPath);
+          await instance.png({ compressionLevel: 9, quality: q, palette: true }).toFile(candPath);
           break;
         case 'webp':
-          await instance
-            .webp({ quality: q, effort: 4 })
-            .toFile(candPath);
+          await instance.webp({ quality: q, effort: 4 }).toFile(candPath);
           break;
         default:
           await fs.promises.copyFile(originalPath, candPath);
@@ -109,7 +191,7 @@ export class TargetSizeService {
       }
 
       const candStats = await fs.promises.stat(candPath);
-      const qualityEval = await imageQualityEvaluator.evaluateQuality(originalPath, candPath);
+      const qualityEval = await imageQualityEvaluator.evaluateImageQuality(originalPath, candPath);
 
       const meta: CandidateMeta = {
         quality: q,
@@ -130,22 +212,18 @@ export class TargetSizeService {
     let bestSafeSize: number | undefined = undefined;
 
     try {
-      // 2. Bound Check: Max Quality at full scale (q = 95, scale = 1.0)
       const maxCand = await encodeCandidate(95, 1.0);
       candidates.push(maxCand.meta);
 
       if (maxCand.meta.size <= targetSizeBytes && maxCand.meta.isAcceptable) {
-        // High quality candidate already fits target size
         winningTempFile = maxCand.tempFile;
       } else {
         await fs.promises.unlink(maxCand.tempFile).catch(() => {});
 
-        // 3. Bound Check: Min Quality at full scale (q = 15, scale = 1.0)
         let activeScale = 1.0;
         let minCand = await encodeCandidate(15, activeScale);
         candidates.push(minCand.meta);
 
-        // If min quality at full resolution exceeds target, try downscaling scales
         if (minCand.meta.size > targetSizeBytes) {
           const scalesToTry = [0.75, 0.5, 0.35, 0.25];
           for (const s of scalesToTry) {
@@ -160,7 +238,6 @@ export class TargetSizeService {
         }
 
         if (minCand.meta.size > targetSizeBytes) {
-          // Even lowest quality at smallest scale exceeds target
           if (request.forceTarget) {
             winningTempFile = minCand.tempFile;
             isForced = true;
@@ -168,7 +245,6 @@ export class TargetSizeService {
             isTargetReached = true;
             selectedStatus = 'success';
           } else {
-            // Target is unreachable under quality protection
             winningTempFile = minCand.tempFile;
             selectedStatus = 'target_unreachable';
             isTargetReached = false;
@@ -178,7 +254,6 @@ export class TargetSizeService {
         } else {
           await fs.promises.unlink(minCand.tempFile).catch(() => {});
 
-          // 4. Binary Search Loop over quality at active scale (q = 15 .. 95)
           let lowQ = 15;
           let highQ = 95;
           let bestValidCandFile: string | null = null;
@@ -196,16 +271,12 @@ export class TargetSizeService {
               bestValidCandFile = cand.tempFile;
               bestValidMeta = cand.meta;
 
-              // Check tolerance window (within 3% of target)
               const diffPercent = ((targetSizeBytes - cand.meta.size) / targetSizeBytes) * 100;
               if (diffPercent <= TARGET_SIZE_CONFIG.TOLERANCE_PERCENT && cand.meta.isAcceptable) {
-                break; // Converged within tolerance!
+                break;
               }
-
-              // Try higher quality to get closer to target
               lowQ = midQ + 1;
             } else {
-              // Exceeds target, try lower quality
               await fs.promises.unlink(cand.tempFile).catch(() => {});
               highQ = midQ - 1;
             }
@@ -229,7 +300,6 @@ export class TargetSizeService {
         }
       }
 
-      // 5. Final output handling
       if (winningTempFile && fs.existsSync(winningTempFile)) {
         await fs.promises.copyFile(winningTempFile, outputPath);
         await fs.promises.unlink(winningTempFile).catch(() => {});
@@ -237,7 +307,6 @@ export class TargetSizeService {
         await fs.promises.copyFile(originalPath, outputPath);
       }
     } catch {
-      // Revert to original file on failure
       await fs.promises.copyFile(originalPath, outputPath);
       selectedStatus = 'failed';
       isTargetReached = false;
@@ -246,8 +315,7 @@ export class TargetSizeService {
     const outStats = await fs.promises.stat(outputPath);
     const outputSize = outStats.size;
     const reductionBytes = Math.max(0, originalSize - outputSize);
-    const reductionPercentage =
-      originalSize > 0 ? Number(((reductionBytes / originalSize) * 100).toFixed(1)) : 0;
+    const reductionPercentage = originalSize > 0 ? Number(((reductionBytes / originalSize) * 100).toFixed(1)) : 0;
 
     const winningMeta = candidates.find((c) => c.size === outputSize) || candidates[candidates.length - 1];
 
@@ -265,6 +333,7 @@ export class TargetSizeService {
       targetSizeBytes,
       outputSize,
       reductionBytes,
+      savedBytes: reductionBytes,
       reductionPercentage,
       qualityProtected: isQualityProtected,
       targetReached: isTargetReached,
@@ -274,6 +343,7 @@ export class TargetSizeService {
       iterationsCount: iterations,
       message,
       processingTimeMs: Date.now() - startTime,
+      label: 'LOSSY OPTIMIZATION',
     };
   }
 }

@@ -7,7 +7,10 @@ export const getHistory = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required.' } });
   }
 
-  const sessionId = (req.query.sessionId || '').toString();
+  const sessionId = (req.query.sessionId || req.headers['x-session-id'] || '').toString();
+
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
 
   try {
     const history = await historyService.getSessionHistory(req.user.id, sessionId || undefined);

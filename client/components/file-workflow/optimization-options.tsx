@@ -21,7 +21,7 @@ export function OptimizationOptions({
     {
       id: 'smart' as const,
       title: 'SMART',
-      description: 'Best balance of quality and file size',
+      description: 'OptiPress automatically finds the smallest safe file size (preferred compact range: 100–150 KB).',
       recommended: true,
       icon: Sparkles,
     },

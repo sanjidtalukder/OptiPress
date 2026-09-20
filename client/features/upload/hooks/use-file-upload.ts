@@ -14,9 +14,9 @@ export function useFileUpload(sessionId?: string) {
 
   const fetchSessionFiles = useCallback(async () => {
     if (!session?.accessToken) return;
-    const sessionFiles = await fileService.getFiles(session.accessToken);
+    const sessionFiles = await fileService.getFiles(session.accessToken, sessionId);
     setFiles(sessionFiles);
-  }, [session?.accessToken]);
+  }, [session?.accessToken, sessionId]);
 
   useEffect(() => {
     if (isAuthenticated && session?.accessToken) {

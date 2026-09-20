@@ -44,9 +44,14 @@ export class FileService {
     }
   }
 
-  async getFiles(accessToken: string): Promise<SessionFileMetadata[]> {
+  async getFiles(accessToken: string, sessionId?: string): Promise<SessionFileMetadata[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/files`, {
+      const url = new URL(`${this.baseUrl}/api/files`);
+      if (sessionId) {
+        url.searchParams.append('sessionId', sessionId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,

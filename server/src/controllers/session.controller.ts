@@ -161,7 +161,13 @@ export const clearWorkspaceSession = async (req: AuthenticatedRequest, res: Resp
     return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } });
   }
 
-  const targetSessionId = (req.body.sessionId || req.headers['x-session-id'] || '').toString();
+  const startTime = Date.now();
+  const targetSessionId = (
+    req.body?.sessionId ||
+    req.query?.sessionId ||
+    req.headers['x-session-id'] ||
+    ''
+  ).toString();
 
   if (targetSessionId) {
     await cleanupService.cleanSessionWorkspace(req.user.id, targetSessionId);
@@ -188,6 +194,12 @@ export const clearWorkspaceSession = async (req: AuthenticatedRequest, res: Resp
       memorySessions.delete(id);
     }
   }
+
+  const durationMs = Date.now() - startTime;
+  console.log(`[SESSION_CLEANUP] type: ${req.path.includes('beacon') ? 'lifecycle' : 'manual'}, user: ${req.user.id.substring(0, 8)}, session: ${targetSessionId || 'all'}, duration: ${durationMs}ms`);
+
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
 
   return res.status(200).json({
     success: true,

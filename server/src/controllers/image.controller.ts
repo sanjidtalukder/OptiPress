@@ -180,10 +180,11 @@ export const optimizeTargetSize = async (req: AuthenticatedRequest, res: Respons
 
   const { sessionId, storedName, originalName, extension } = fileRecord;
 
-  if (!IMAGE_EXTENSIONS.has(extension.toLowerCase())) {
+  const ALLOWED_TARGET_EXTENSIONS = new Set(['pdf', 'jpg', 'jpeg', 'png', 'webp']);
+  if (!ALLOWED_TARGET_EXTENSIONS.has(extension.toLowerCase())) {
     return res.status(400).json({
       success: false,
-      error: { code: 'NOT_AN_IMAGE', message: `File format .${extension} cannot be processed by the target size optimization engine.` },
+      error: { code: 'UNSUPPORTED_FORMAT', message: `File format .${extension} cannot be processed by the target size optimization engine.` },
     });
   }
 

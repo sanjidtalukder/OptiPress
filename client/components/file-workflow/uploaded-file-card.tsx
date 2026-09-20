@@ -355,6 +355,10 @@ export function UploadedFileCard({
               outputFileName={pdfResult.outputFileName}
               onDownload={handleDownloadActiveResult}
               pageCount={pdfResult.pageCount}
+              resultStatus={pdfResult.status}
+              resultLabel={pdfResult.resultLabel}
+              userMessage={pdfResult.userMessage}
+              qualityStatusText={pdfResult.qualityStatusText}
             />
           )}
 
@@ -373,6 +377,10 @@ export function UploadedFileCard({
               outputFileName={imageResult.outputFileName}
               onDownload={handleDownloadActiveResult}
               dimensions={{ width: imageResult.width, height: imageResult.height }}
+              resultStatus={imageResult.status}
+              resultLabel={imageResult.resultLabel}
+              userMessage={imageResult.userMessage}
+              qualityStatusText={imageResult.qualityStatusText}
             />
           )}
 

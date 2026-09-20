@@ -97,7 +97,12 @@ export const getFiles = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required.' } });
   }
 
-  const files = await sessionFileRepository.getUserFiles(req.user.id);
+  const sessionId = (req.query.sessionId || req.headers['x-session-id'] || '').toString();
+
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+
+  const files = await sessionFileRepository.getUserFiles(req.user.id, sessionId || undefined);
   return res.status(200).json({
     success: true,
     data: {

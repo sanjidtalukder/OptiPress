@@ -17,6 +17,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const pdfOptimizeSchema = z.object({
   mode: z.enum(['smart', 'quality', 'maximum']).default('smart'),
+  targetSize: z.number().positive().optional(),
+  targetUnit: z.enum(['KB', 'MB']).optional().default('KB'),
+  forceTarget: z.boolean().optional().default(false),
 });
 
 export const optimizePdf = async (req: AuthenticatedRequest, res: Response) => {
@@ -29,11 +32,11 @@ export const optimizePdf = async (req: AuthenticatedRequest, res: Response) => {
   if (!parseResult.success) {
     return res.status(400).json({
       success: false,
-      error: { code: 'INVALID_MODE', message: 'Invalid PDF optimization mode. Allowed: smart, quality, maximum.' },
+      error: { code: 'INVALID_PARAMETERS', message: 'Invalid PDF optimization parameters.', details: parseResult.error.flatten() },
     });
   }
 
-  const mode = parseResult.data.mode as PdfOptimizationMode;
+  const { mode, targetSize, targetUnit, forceTarget } = parseResult.data;
 
   const fileRecord = await sessionFileRepository.getFileRecord(fileId, req.user.id);
   if (!fileRecord) {
@@ -72,7 +75,10 @@ export const optimizePdf = async (req: AuthenticatedRequest, res: Response) => {
       fileId,
       inputPath,
       outputPath,
-      mode,
+      mode: mode as PdfOptimizationMode,
+      targetSize,
+      targetUnit,
+      forceTarget,
     });
 
     // Validate generated output
@@ -123,7 +129,7 @@ export const optimizePdf = async (req: AuthenticatedRequest, res: Response) => {
       extension: 'pdf',
       originalSize: result.originalSize,
       outputSize: result.optimizedSize,
-      operation: 'PDF Optimization',
+      operation: targetSize ? `PDF Target Optimization (${targetSize}${targetUnit})` : 'PDF Optimization',
       mode,
       status: result.status === 'failed' ? 'failed' : 'completed',
       reductionPercentage: result.reductionPercentage,
